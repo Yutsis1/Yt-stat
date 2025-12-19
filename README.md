@@ -78,27 +78,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 4. Wait 10-30 seconds for the analysis
 5. Receive a detailed breakdown of comment types!
 
-## Project Structure
-
-```
-Yt-stat/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app & webhook handler
-│   ├── config.py            # Environment configuration
-│   ├── bot/
-│   │   ├── __init__.py
-│   │   └── handlers.py      # Telegram message handlers
-│   └── services/
-│       ├── __init__.py
-│       ├── youtube.py       # YouTube API integration
-│       └── analyzer.py      # ChatGPT analysis logic
-├── run_polling.py           # Development runner
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
-```
 
 ## API Endpoints
 
