@@ -1,153 +1,121 @@
+import time
 from dataclasses import dataclass
-from openai import OpenAI
+from typing import List, Optional
+from openai import OpenAI, RateLimitError
+import json
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.config import get_settings
 from app.services.youtube import Comment
 
 
-@dataclass
-class CommentCategory:
-    """A category of comments identified by the analyzer."""
-    name: str
-    description: str
-    count: int
-    percentage: float
-    example_comments: list[str]
-
-
-@dataclass
-class AnalysisResult:
-    """Result of comment analysis."""
-    total_comments: int
-    dominant_category: CommentCategory
-    most_liked_category: CommentCategory
-    all_categories: list[CommentCategory]
-    summary: str
-
 
 class CommentAnalyzer:
     """Service for analyzing YouTube comments using ChatGPT."""
-    
-    ANALYSIS_PROMPT = """Analyze the following YouTube video comments and categorize them.
 
-For each comment, I'll provide the text and the number of likes it received.
-
-Your task:
-1. Identify 4-6 distinct categories of comments (e.g., "Appreciation/Praise", "Questions", "Criticism", "Jokes/Humor", "Personal Stories", "Requests", etc.)
-2. Categorize each comment
-3. Determine which category is DOMINANT (most comments)
-4. Determine which category is MOST LIKED (highest average likes per comment)
-
-Respond in this exact JSON format:
-{{
-    "categories": [
-        {{
-            "name": "Category Name",
-            "description": "Brief description of this category",
-            "count": 15,
-            "total_likes": 230,
-            "example_comments": ["Example 1", "Example 2"]
-        }}
-    ],
-    "dominant_category": "Category Name",
-    "most_liked_category": "Category Name",
-    "summary": "A 2-3 sentence summary of the overall comment sentiment and engagement patterns."
-}}
-
-COMMENTS TO ANALYZE:
-{comments_text}
-
-Respond with valid JSON only, no additional text."""
+    COMMENT_PROMT_ID = None  # to be loaded from settings
+    # batch size for processing comments
+    BATCH_SIZE = 10
+    # max concurrent workers
+    MAX_WORKERS = 2
 
     def __init__(self):
         settings = get_settings()
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.openai_client = OpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model
+        # Regex to detect links in comments (http/https or www)
+        self.link_regex = re.compile(r"https?://\S+|www\.\S+")
+        self.COMMENT_PROMPT = {
+            "id": settings.comment_prompt_id,
+            # "variables": {"comment": ""}
+            # "version": "1"
+            }
     
-    def _format_comments_for_prompt(self, comments: list[Comment]) -> str:
-        """Format comments for the analysis prompt."""
-        lines = []
-        for i, comment in enumerate(comments, 1):
-            # Truncate very long comments
-            text = comment.text[:500] + "..." if len(comment.text) > 500 else comment.text
-            # Clean up newlines for prompt
-            text = text.replace('\n', ' ').strip()
-            lines.append(f"{i}. [Likes: {comment.like_count}] {text}")
-        return '\n'.join(lines)
+    def chunked(self, seq, size):
+        """Genreator that yields successive n-sized chunks from seq."""
+        for i in range(0, len(seq), size):
+            yield i, seq[i:i + size]  # (start_index, batch)
+
+    def contains_link(self, text: str) -> bool:
+        """Return True if the given text contains a link."""
+        return bool(self.link_regex.search(text))
     
-    def analyze(self, comments: list[Comment]) -> AnalysisResult:
+    def analyze_single_comment(self, comment: Comment, prompt=None) -> Optional[dict]:
+        """
+        Returns parsed JSON for one comment, or None if skipped.
+        """
+        if self.contains_link(comment.text):
+            return None
+
+        resp = self.openai_client.responses.create(
+            model=self.model,
+            input=comment.text,
+            prompt=prompt or self.COMMENT_PROMPT,
+        )
+        return json.loads(resp.output_text)
+
+    def process_batch(self, start_idx: int, batch: List[Comment]) -> List[tuple[int, Optional[dict]]]:
+        """
+        Process a batch sequentially; return (absolute_index, result_or_None).
+        """
+        out = []
+        for offset, comment in enumerate(batch):
+            idx = start_idx + offset
+            try:
+                out.append((idx, self.analyze_single_comment(comment)))
+            except Exception as e:
+                # out.append((idx, None))
+                raise e # failing for now
+        return out
+    
+    def analyze_comments_in_batches_in_threads(
+            self, comments: List[Comment], 
+            max_workers: int = None,
+            batch_size: int = None
+            ) ->  List[Optional[dict]]:
+        """
+        Runs batches of 10 comments with 2 threads and returns results aligned to input order.
+        """
+        results = [None] * len(comments)
+        max_workers = max_workers or self.MAX_WORKERS
+        with ThreadPoolExecutor(
+                max_workers=max_workers
+            ) as executor:
+            futures = []
+            batch_size = batch_size or self.BATCH_SIZE
+            for start_idx, batch in self.chunked(comments, batch_size):
+                futures.append(
+                    executor.submit(self.process_batch, start_idx, batch))
+
+            for fut in as_completed(futures):
+                batch_results = fut.result()
+                for idx, parsed in batch_results:
+                    results[idx] = parsed
+
+        # If you want to drop skipped/failed entries entirely:
+        # return [r for r in results if r is not None]
+        return results
+    
+    def analyze(self, comments: list[Comment]) -> List[Optional[dict]]:
         """Analyze comments using ChatGPT and return structured results."""
-        import json
         
         if not comments:
-            raise ValueError("No comments to analyze")
+            raise ValueError("No comments to analyze")   
         
-        # Format comments for the prompt
-        comments_text = self._format_comments_for_prompt(comments)
-        prompt = self.ANALYSIS_PROMPT.format(comments_text=comments_text)
-        
-        # Call OpenAI API
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert at analyzing social media comments and identifying patterns in user engagement. Always respond with valid JSON."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,
-            max_tokens=2000
-        )
-        
-        # Parse response
-        content = response.choices[0].message.content.strip()
-        
-        # Remove markdown code blocks if present
-        if content.startswith('```'):
-            content = content.split('\n', 1)[1]
-            if content.endswith('```'):
-                content = content.rsplit('```', 1)[0]
-        
-        data = json.loads(content)
-        
-        # Build category objects
-        categories = []
-        dominant_cat = None
-        most_liked_cat = None
-        
-        for cat_data in data['categories']:
-            count = cat_data['count']
-            category = CommentCategory(
-                name=cat_data['name'],
-                description=cat_data.get('description', ''),
-                count=count,
-                percentage=round(count / len(comments) * 100, 1),
-                example_comments=cat_data.get('example_comments', [])[:2]
-            )
-            categories.append(category)
-            
-            if cat_data['name'] == data['dominant_category']:
-                dominant_cat = category
-            if cat_data['name'] == data['most_liked_category']:
-                most_liked_cat = category
-        
-        # Fallback if categories not found
-        if not dominant_cat:
-            dominant_cat = max(categories, key=lambda c: c.count)
-        if not most_liked_cat:
-            most_liked_cat = categories[0]
-        
-        return AnalysisResult(
-            total_comments=len(comments),
-            dominant_category=dominant_cat,
-            most_liked_category=most_liked_cat,
-            all_categories=categories,
-            summary=data.get('summary', 'Analysis completed.')
-        )
+        # Call OpenAI API with retry logic for rate limits
+        comment_analysis_list = []
+        try:
+            comment_analysis_list = self.analyze_comments_in_batches_in_threads(comments)
+
+        except RateLimitError as e:
+            # Check if it's a quota issue (not retryable) vs temporary rate limit
+            if 'insufficient_quota' in str(e):
+                raise ValueError(
+                    "OpenAI API quota exceeded. Please add credits to your OpenAI account at https://platform.openai.com/account/billing"
+                ) from e
+    
+        return comment_analysis_list
 
 
 # Singleton instance

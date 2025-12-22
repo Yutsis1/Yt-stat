@@ -14,13 +14,19 @@ class Settings(BaseSettings):
     
     # OpenAI
     openai_api_key: str = Field(..., description="OpenAI API key")
-    openai_model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
+    openai_model: str = Field(default="gpt-5-nano", description="OpenAI model to use")
     
     # Webhook (optional, for production)
     webhook_url: str | None = Field(default=None, description="Webhook URL for production")
     
     # App settings
     max_comments: int = Field(default=100, description="Maximum comments to fetch")
+
+    # Prompt ID for single comment analysis
+    comment_prompt_id: str = Field(
+        default=...,
+        description="OpenAI Prompt ID for single comment analysis"
+    )
     
     class Config:
         env_file = ".env"

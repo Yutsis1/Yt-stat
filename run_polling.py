@@ -14,4 +14,7 @@ logging.basicConfig(
 if __name__ == "__main__":
     print("Starting YouTube Comment Analyzer Bot in polling mode...")
     print("Press Ctrl+C to stop")
-    asyncio.run(start_polling())
+    asyncio.run(start_polling(
+        bot_instance=None,
+        dispatcher_instance=None
+    ))

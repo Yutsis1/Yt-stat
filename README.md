@@ -53,6 +53,7 @@ Required environment variables:
 - `TELEGRAM_BOT_TOKEN` - Your Telegram bot token
 - `YOUTUBE_API_KEY` - YouTube Data API v3 key
 - `OPENAI_API_KEY` - OpenAI API key
+- `COMMENT_PROMPT_ID` - OpenAI Prompt ID (if you use prompt library features)
 
 ### 4. Running the Bot
 

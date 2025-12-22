@@ -22,9 +22,12 @@ bot: Bot | None = None
 dp: Dispatcher | None = None
 
 
-async def setup_bot():
+async def setup_bot(
+        bot_instance: Bot | None,
+          dispatcher_instance: Dispatcher | None) -> tuple[Bot, Dispatcher]:
     """Initialize bot and dispatcher."""
-    global bot, dp
+    bot = bot_instance
+    dp = dispatcher_instance
     
     settings = get_settings()
     bot = Bot(token=settings.telegram_bot_token)
@@ -34,20 +37,26 @@ async def setup_bot():
     return bot, dp
 
 
-async def start_polling():
+async def start_polling(
+        bot_instance: Bot | None,
+        dispatcher_instance: Dispatcher | None
+):
     """Start bot in polling mode (for development)."""
-    global bot, dp
+    bot = bot_instance
+    dp = dispatcher_instance
     
     if bot is None or dp is None:
-        await setup_bot()
+        bot, dp = await setup_bot( bot, dp)
     
     logger.info("Starting bot in polling mode...")
     await dp.start_polling(bot)
 
 
-async def setup_webhook():
+async def setup_webhook(
+        bot_instance: Bot | None
+):
     """Set up webhook for production."""
-    global bot
+    bot = bot_instance
     
     settings = get_settings()
     if settings.webhook_url:
@@ -56,9 +65,9 @@ async def setup_webhook():
         logger.info(f"Webhook set to: {webhook_url}")
 
 
-async def shutdown_bot():
+async def shutdown_bot(bot_instance: Bot | None):
     """Clean up bot resources."""
-    global bot
+    bot = bot_instance
     
     if bot:
         await bot.session.close()
