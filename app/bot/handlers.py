@@ -5,14 +5,14 @@ from aiogram.filters import Command
 from aiogram.enums import ParseMode
 
 from app.services.youtube import get_youtube_service
-from app.services.analyzer import get_analyzer, AnalysisResult
+from app.services.analyzer import get_analyzer, ComentAnalysisResult
 
 logger = logging.getLogger(__name__)
 
 router = Router()
 
 
-def format_analysis_result(result: AnalysisResult, video_title: str) -> str:
+def format_analysis_result(result: ComentAnalysisResult, video_title: str) -> str:
     """Format analysis result as a Telegram message."""
     
     # Emoji mapping for common category types
@@ -205,7 +205,7 @@ async def handle_youtube_link(message: Message):
         
         # Analyze comments
         analyzer = get_analyzer()
-        result = analyzer.analyze(comments)
+        result = analyzer.categorize_comments(comments)
         
         # Format and send result
         response = format_analysis_result(result, video_info.title)

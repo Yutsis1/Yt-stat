@@ -4,23 +4,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from app.config import get_settings
+from app.modals import Comment, VideoInfo
 
-
-@dataclass
-class Comment:
-    """Represents a YouTube comment."""
-    text: str
-    like_count: int
-    author: str
-    reply_count: int = 0
-
-
-@dataclass
-class VideoInfo:
-    """Basic video information."""
-    video_id: str
-    title: str
-    channel: str
 
 
 class YouTubeService:
