@@ -205,7 +205,7 @@ async def handle_youtube_link(message: Message):
         
         # Analyze comments
         analyzer = get_analyzer()
-        result = analyzer.categorize_comments(comments)
+        result = analyzer.analyze(comments)
         
         # Format and send result
         response = format_analysis_result(result, video_info.title)

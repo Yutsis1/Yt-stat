@@ -27,6 +27,11 @@ class Settings(BaseSettings):
         default=...,
         description="OpenAI Prompt ID for single comment analysis"
     )
+    # Prompt ID for topic analysis
+    topic_analysis_prompt_id: str = Field(
+        default=...,
+        description="OpenAI Prompt ID for topic analysis"
+    )
     
     class Config:
         env_file = ".env"

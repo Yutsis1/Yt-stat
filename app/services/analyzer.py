@@ -1,3 +1,4 @@
+from collections import Counter
 import time
 from dataclasses import dataclass
 from typing import List, Optional, Literal
@@ -6,24 +7,15 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from pyparsing import Dict
-
 from app.config import get_settings
 from app.modals import ComentAnalysisResult, Comment
-
-
-
-# Literal type and simple container class for sentiment values
-Sentiment = Literal["positive", "negative",
-                    "neutral", "nonsensical", "off-topic"]
-
-
 
 
 class CommentAnalyzer:
     """Service for analyzing YouTube comments using ChatGPT."""
 
     COMMENT_PROMT_ID = None  # to be loaded from settings
+    TOPIC_ANALYSIS_PROMPT_ID = None
     # batch size for processing comments
     BATCH_SIZE = 10
     # max concurrent workers
@@ -40,6 +32,7 @@ class CommentAnalyzer:
             # "variables": {"comment": ""}
             # "version": "1"
         }
+        self.TOPIC_ANALYSIS_PROMPT_ID = settings.topic_analysis_prompt_id  
 
     def chunked(self, seq, size):
         """Genreator that yields successive n-sized chunks from seq."""
@@ -111,7 +104,7 @@ class CommentAnalyzer:
         # return [r for r in results if r is not None]
         return results
 
-    def categorize_comments(self, comments: list[Comment]) -> List[Optional[Comment]]:
+    def categorize_comments(self, comments: List[Comment]) -> List[Optional[Comment]]:
         """Analyze comments using ChatGPT and return structured results."""
 
         if not comments:
@@ -131,6 +124,68 @@ class CommentAnalyzer:
                 ) from e
 
         return comment_list
+    
+    @staticmethod
+    def count_comment_per_sentiment(comments: List[Comment]) -> Counter:
+        """
+        Count how often each sentiment category appears in the comments.
+        :param comments: Description
+        :type comments: List[Comment]
+        :return: Description
+        :rtype: Counter
+        """
+        sentiment_counts = Counter(
+                f"{comment.analysis_result.sentiment}" for comment in comments if comment.analysis_result
+            )
+        return sentiment_counts
+    
+    @staticmethod
+    def count_likes_per_category(comments: List[Comment]) -> Optional[Counter]:
+        """
+        Determine the sentiment category with the highest total likes.
+        :param comments: Description
+        :type comments: List[Comment]
+        :return: Description
+        :rtype: Optional[Sentiment]
+        """
+        likes_by_sentiment = Counter({s: 0 for s in ComentAnalysisResult.__annotations__['sentiment'].__args__})
+
+        for comment in comments:
+            if comment.analysis_result:
+                likes_by_sentiment[comment.analysis_result.sentiment] += comment.like_count
+        return likes_by_sentiment
+
+    
+    def analyze(self, comments: List[Comment]) -> str:
+        """
+        Analyze comments and produce a summary of the analysis.
+        :param comments: Description
+        :type comments: List[Comment]
+        :return: Description
+        :rtype: dict
+        """
+        categorized_comments = self.categorize_comments(comments)
+        sentiment_counts = self.count_comment_per_sentiment(comments)
+        likes_by_sentiment = self.count_likes_per_category(comments)
+        
+        comments_theme_list = [
+            {
+                "main_theme": comment.analysis_result.main_theme, 
+                "like_count": comment.like_count, 
+                "sentiment": comment.analysis_result.sentiment
+            }
+            for comment in comments 
+            if comment.analysis_result and comment.analysis_result.main_theme
+        ]
+
+        resp = self.openai_client.responses.create(
+            model=self.model,
+            input=comments_theme_list,
+            prompt={
+                "id": self.TOPIC_ANALYSIS_PROMPT_ID,  
+            },
+        )
+        return resp.output_text
     
 
 
