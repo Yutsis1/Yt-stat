@@ -5,7 +5,6 @@ from typing import List, Optional
 from openai import DefaultAioHttpClient, RateLimitError, AsyncOpenAI
 import json
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.config import get_settings
 from app.modals import ComentAnalysisResult, Comment
@@ -38,12 +37,8 @@ class CommentAnalyzer:
         self.model = settings.openai_model
         # Regex to detect links in comments (http/https or www)
         self.link_regex = re.compile(r"https?://\S+|www\.\S+")
-        self.COMMENT_PROMPT = {
-            "id": settings.comment_prompt_id,
-            # "variables": {"comment": ""}
-            # "version": "1"
-        }
-        self.TOPIC_ANALYSIS_PROMPT_ID = settings.topic_analysis_prompt_id
+        self.comment_prompt_id = settings.comment_prompt_id
+        self.topic_analysis_prompt_id = settings.topic_analysis_prompt_id
 
     def chunked(self, seq, size):
         """Genreator that yields successive n-sized chunks from seq."""
@@ -79,12 +74,19 @@ class CommentAnalyzer:
 
         raise RateLimitError("Rate limit: exceeded max retries")
 
+    def _build_prompt(self, prompt_id: str, language: str | None):
+        prompt = {"id": prompt_id}
+        if language:
+            prompt["variables"] = {"language": language}
+        return prompt
+
     async def analyze_single_comment_async(
         self,
         comment: Comment,
         *,
         semaphore: asyncio.Semaphore,
         prompt=None,
+        language: str | None = None,
     ) -> Optional[ComentAnalysisResult]:
         if self.contains_link(comment.text):
             return None
@@ -93,11 +95,16 @@ class CommentAnalyzer:
             resp = await self._call_with_retries(
                 model=self.model,
                 input=comment.text,
-                prompt=prompt or self.COMMENT_PROMPT,
+                prompt=prompt or self._build_prompt(self.comment_prompt_id, language),
             )
             return ComentAnalysisResult(**json.loads(resp.output_text))
 
-    async def categorize_comments_async(self, comments: List[Comment]) -> List[Optional[Comment]]:
+    async def categorize_comments_async(
+        self,
+        comments: List[Comment],
+        *,
+        language: str | None = None,
+    ) -> List[Optional[Comment]]:
         if not comments:
             raise ValueError("No comments to analyze")
 
@@ -106,7 +113,7 @@ class CommentAnalyzer:
 
         async def worker(i: int, c: Comment):
             c.analysis_result = await self.analyze_single_comment_async(
-                c, semaphore=semaphore
+                c, semaphore=semaphore, language=language
             )
             results[i] = c
 
@@ -114,12 +121,17 @@ class CommentAnalyzer:
         await asyncio.gather(*tasks)
         return results
 
-    async def analyze_async(self, comments: List[Comment]) -> str:
+    async def analyze_async(
+        self,
+        comments: List[Comment],
+        *,
+        language: str | None = None,
+    ) -> str:
         """
         Async version of analyze() that assumes comments already have analysis_result,
         or calls categorize first if you prefer.
         """
-        await self.categorize_comments_async(comments)
+        await self.categorize_comments_async(comments, language=language)
         comments_theme_list = [
             {
                 "main_theme": c.analysis_result.main_theme,
@@ -133,13 +145,18 @@ class CommentAnalyzer:
         resp = await self._call_with_retries(
             model=self.model,
             input=str(comments_theme_list),
-            prompt={"id": self.TOPIC_ANALYSIS_PROMPT_ID},
+            prompt=self._build_prompt(self.topic_analysis_prompt_id, language),
         )
         return resp.output_text
 
-    def categorize_comments(self, comments: List[Comment]) -> List[Optional[Comment]]:
+    def categorize_comments(
+        self,
+        comments: List[Comment],
+        *,
+        language: str | None = None,
+    ) -> List[Optional[Comment]]:
         """Sync wrapper for categorize_comments_async. if needed."""
-        return asyncio.run(self.categorize_comments_async(comments))
+        return asyncio.run(self.categorize_comments_async(comments, language=language))
     
     @staticmethod
     def count_comment_per_sentiment(comments: List[Comment]) -> Counter:
