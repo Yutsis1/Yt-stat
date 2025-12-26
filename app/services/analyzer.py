@@ -1,8 +1,8 @@
+import asyncio
 from collections import Counter
-import time
-from dataclasses import dataclass
-from typing import List, Optional, Literal
-from openai import OpenAI, RateLimitError
+import random
+from typing import List, Optional
+from openai import DefaultAioHttpClient, RateLimitError, AsyncOpenAI
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -21,9 +21,20 @@ class CommentAnalyzer:
     # max concurrent workers
     MAX_WORKERS = 2
 
+        # IMPORTANT: this is your true concurrency knob now
+    MAX_IN_FLIGHT_REQUESTS = 20
+
+    # Retry tuning
+    MAX_RETRIES = 6
+    BASE_BACKOFF_S = 0.5
+    MAX_BACKOFF_S = 20.0
+
     def __init__(self):
         settings = get_settings()
-        self.openai_client = OpenAI(api_key=settings.openai_api_key)
+        self.openai_client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            http_client=DefaultAioHttpClient(),
+        )
         self.model = settings.openai_model
         # Regex to detect links in comments (http/https or www)
         self.link_regex = re.compile(r"https?://\S+|www\.\S+")
@@ -32,7 +43,7 @@ class CommentAnalyzer:
             # "variables": {"comment": ""}
             # "version": "1"
         }
-        self.TOPIC_ANALYSIS_PROMPT_ID = settings.topic_analysis_prompt_id  
+        self.TOPIC_ANALYSIS_PROMPT_ID = settings.topic_analysis_prompt_id
 
     def chunked(self, seq, size):
         """Genreator that yields successive n-sized chunks from seq."""
@@ -42,88 +53,93 @@ class CommentAnalyzer:
     def contains_link(self, text: str) -> bool:
         """Return True if the given text contains a link."""
         return bool(self.link_regex.search(text))
+    
+    async def _call_with_retries(self, *, model: str, input, prompt):
+        """
+        Retry wrapper for transient rate limits.
+        """
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                return await self.openai_client.responses.create(
+                    model=model,
+                    input=input,
+                    prompt=prompt,
+                )
+            except RateLimitError as e:
+                # If it's quota exhaustion, retries won't help
+                if "insufficient_quota" in str(e):
+                    raise ValueError(
+                        "OpenAI API quota exceeded. Please add credits to your OpenAI account."
+                    ) from e
 
-    def analyze_single_comment(self, comment: Comment, prompt=None) -> Optional[ComentAnalysisResult]:
-        """
-        Returns parsed JSON for one comment, or None if skipped.
-        """
+                # Exponential backoff + jitter
+                backoff = min(self.MAX_BACKOFF_S, self.BASE_BACKOFF_S * (2**attempt))
+                backoff = backoff * (0.75 + 0.5 * random.random())
+                await asyncio.sleep(backoff)
+
+        raise RateLimitError("Rate limit: exceeded max retries")
+
+    async def analyze_single_comment_async(
+        self,
+        comment: Comment,
+        *,
+        semaphore: asyncio.Semaphore,
+        prompt=None,
+    ) -> Optional[ComentAnalysisResult]:
         if self.contains_link(comment.text):
             return None
 
-        resp = self.openai_client.responses.create(
-            model=self.model,
-            input=comment.text,
-            prompt=prompt or self.COMMENT_PROMPT,
-        )
-        return ComentAnalysisResult(**json.loads(resp.output_text))
+        async with semaphore:
+            resp = await self._call_with_retries(
+                model=self.model,
+                input=comment.text,
+                prompt=prompt or self.COMMENT_PROMPT,
+            )
+            return ComentAnalysisResult(**json.loads(resp.output_text))
 
-    def process_batch(
-            self,
-            start_idx: int, 
-            batch: List[Comment]
-            ) -> List[tuple[int, Optional[Comment]]]:
-        """
-        Process a batch sequentially; return (absolute_index, result_or_None).
-        """
-        out = []
-        for offset, comment in enumerate(batch):
-            idx = start_idx + offset
-            try:
-                comment.analysis_result = self.analyze_single_comment(comment)
-                out.append((idx, comment))
-            except Exception as e:
-                # out.append((idx, None))
-                raise e  # failing for now
-        return out
-
-    def analyze_comments_in_batches_in_threads(
-            self, comments: List[Comment],
-            max_workers: int = None,
-            batch_size: int = None
-    ) -> List[Optional[Comment]]:
-        """
-        Runs batches of 10 comments with 2 threads and returns results aligned to input order.
-        """
-        results = [None] * len(comments)
-        max_workers = max_workers or self.MAX_WORKERS
-        with ThreadPoolExecutor(
-            max_workers=max_workers
-        ) as executor:
-            futures = []
-            batch_size = batch_size or self.BATCH_SIZE
-            for start_idx, batch in self.chunked(comments, batch_size):
-                futures.append(
-                    executor.submit(self.process_batch, start_idx, batch))
-
-            for fut in as_completed(futures):
-                batch_results = fut.result()
-                for idx, parsed in batch_results:
-                    results[idx] = parsed
-
-        # If you want to drop skipped/failed entries entirely:
-        # return [r for r in results if r is not None]
-        return results
-
-    def categorize_comments(self, comments: List[Comment]) -> List[Optional[Comment]]:
-        """Analyze comments using ChatGPT and return structured results."""
-
+    async def categorize_comments_async(self, comments: List[Comment]) -> List[Optional[Comment]]:
         if not comments:
             raise ValueError("No comments to analyze")
 
-        # Call OpenAI API with retry logic for rate limits
-        comment_list = []
-        try:
-            comment_list = self.analyze_comments_in_batches_in_threads(
-                comments)
+        semaphore = asyncio.Semaphore(self.MAX_IN_FLIGHT_REQUESTS)
+        results: List[Optional[Comment]] = [None] * len(comments)
 
-        except RateLimitError as e:
-            # Check if it's a quota issue (not retryable) vs temporary rate limit
-            if 'insufficient_quota' in str(e):
-                raise ValueError(
-                    "OpenAI API quota exceeded. Please add credits to your OpenAI account at https://platform.openai.com/account/billing"
-                ) from e
+        async def worker(i: int, c: Comment):
+            c.analysis_result = await self.analyze_single_comment_async(
+                c, semaphore=semaphore
+            )
+            results[i] = c
 
-        return comment_list
+        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(comments)]
+        await asyncio.gather(*tasks)
+        return results
+
+    async def analyze_async(self, comments: List[Comment]) -> str:
+        """
+        Async version of analyze() that assumes comments already have analysis_result,
+        or calls categorize first if you prefer.
+        """
+        await self.categorize_comments_async(comments)
+        comments_theme_list = [
+            {
+                "main_theme": c.analysis_result.main_theme,
+                "like_count": c.like_count,
+                "sentiment": c.analysis_result.sentiment,
+            }
+            for c in comments
+            if c.analysis_result and c.analysis_result.main_theme
+        ]
+
+        resp = await self._call_with_retries(
+            model=self.model,
+            input=str(comments_theme_list),
+            prompt={"id": self.TOPIC_ANALYSIS_PROMPT_ID},
+        )
+        return resp.output_text
+
+    def categorize_comments(self, comments: List[Comment]) -> List[Optional[Comment]]:
+        """Sync wrapper for categorize_comments_async. if needed."""
+        return asyncio.run(self.categorize_comments_async(comments))
     
     @staticmethod
     def count_comment_per_sentiment(comments: List[Comment]) -> Counter:
@@ -135,10 +151,10 @@ class CommentAnalyzer:
         :rtype: Counter
         """
         sentiment_counts = Counter(
-                f"{comment.analysis_result.sentiment}" for comment in comments if comment.analysis_result
-            )
+            f"{comment.analysis_result.sentiment}" for comment in comments if comment.analysis_result
+        )
         return sentiment_counts
-    
+
     @staticmethod
     def count_likes_per_category(comments: List[Comment]) -> Optional[Counter]:
         """
@@ -148,45 +164,14 @@ class CommentAnalyzer:
         :return: Description
         :rtype: Optional[Sentiment]
         """
-        likes_by_sentiment = Counter({s: 0 for s in ComentAnalysisResult.__annotations__['sentiment'].__args__})
+        likes_by_sentiment = Counter(
+            {s: 0 for s in ComentAnalysisResult.__annotations__['sentiment'].__args__})
 
         for comment in comments:
             if comment.analysis_result:
                 likes_by_sentiment[comment.analysis_result.sentiment] += comment.like_count
         return likes_by_sentiment
 
-    
-    def analyze(self, comments: List[Comment]) -> str:
-        """
-        Analyze comments and produce a summary of the analysis.
-        :param comments: Description
-        :type comments: List[Comment]
-        :return: Description
-        :rtype: dict
-        """
-        # categorized_comments = self.categorize_comments(comments)
-        # sentiment_counts = self.count_comment_per_sentiment(comments)
-        # likes_by_sentiment = self.count_likes_per_category(comments)
-        
-        comments_theme_list = [
-            {
-                "main_theme": comment.analysis_result.main_theme, 
-                "like_count": comment.like_count, 
-                "sentiment": comment.analysis_result.sentiment
-            }
-            for comment in comments 
-            if comment.analysis_result and comment.analysis_result.main_theme
-        ]
-
-        resp = self.openai_client.responses.create(
-            model=self.model,
-            input=comments_theme_list,
-            prompt={
-                "id": self.TOPIC_ANALYSIS_PROMPT_ID,  
-            },
-        )
-        return resp.output_text
-    
 
 
 # Singleton instance

@@ -5,45 +5,20 @@ from aiogram.filters import Command
 from aiogram.enums import ParseMode
 
 from app.services.youtube import get_youtube_service
-from app.services.analyzer import get_analyzer, ComentAnalysisResult
+from app.services.analyzer import get_analyzer, CommentAnalyzer
 
 logger = logging.getLogger(__name__)
 
 router = Router()
 
 
-def format_analysis_result(result: str, video_title: str) -> str:
+def format_analysis_result(
+        result: str, 
+        video_title: str,
+        *extra_lines: str
+        ) -> str:
     """Format analysis result as a Telegram message."""
     
-    # Emoji mapping for common category types
-    category_emojis = {
-        'appreciation': '❤️',
-        'praise': '❤️',
-        'positive': '❤️',
-        'question': '❓',
-        'questions': '❓',
-        'criticism': '👎',
-        'negative': '👎',
-        'joke': '😂',
-        'humor': '😂',
-        'funny': '😂',
-        'personal': '📖',
-        'story': '📖',
-        'stories': '📖',
-        'request': '🙏',
-        'suggestion': '💡',
-        'discussion': '💬',
-        'debate': '💬',
-        'spam': '🚫',
-        'promotional': '📢',
-    }
-    
-    def get_emoji(category_name: str) -> str:
-        name_lower = category_name.lower()
-        for key, emoji in category_emojis.items():
-            if key in name_lower:
-                return emoji
-        return '📝'
     
     lines = [
         f"📊 <b>Analysis Complete!</b>",
@@ -55,21 +30,7 @@ def format_analysis_result(result: str, video_title: str) -> str:
         f"",
     ]
     
-    lines.extend([
-        f"━━━━━━━━━━━━━━━━━━━━━",
-        f"",
-        f"👍 <b>MOST LIKED COMMENT TYPE:</b>",
-        f"",
-    ])
-    
-    
-    lines.extend([
-        f"━━━━━━━━━━━━━━━━━━━━━",
-        f"",
-        f"📈 <b>ALL CATEGORIES:</b>",
-    ])
-    
-    
+    lines.extend(str(line) for line in extra_lines)
     
     return '\n'.join(lines)
 
@@ -174,10 +135,11 @@ async def handle_youtube_link(message: Message):
         
         # Analyze comments
         analyzer = get_analyzer()
-        result = analyzer.analyze(comments)
-        
+        result = await analyzer.analyze_async(comments)
+        count_comments_per_sentiment = analyzer.count_comment_per_sentiment(comments)
+        likes_per_category = analyzer.count_likes_per_category(comments)
         # Format and send result
-        response = format_analysis_result(result, video_info.title)
+        response = format_analysis_result(result, video_info.title, count_comments_per_sentiment, likes_per_category)
         await processing_msg.edit_text(response, parse_mode=ParseMode.HTML)
         
     except PermissionError as e:
