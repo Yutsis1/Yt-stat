@@ -164,9 +164,9 @@ class CommentAnalyzer:
         :return: Description
         :rtype: dict
         """
-        categorized_comments = self.categorize_comments(comments)
-        sentiment_counts = self.count_comment_per_sentiment(comments)
-        likes_by_sentiment = self.count_likes_per_category(comments)
+        # categorized_comments = self.categorize_comments(comments)
+        # sentiment_counts = self.count_comment_per_sentiment(comments)
+        # likes_by_sentiment = self.count_likes_per_category(comments)
         
         comments_theme_list = [
             {

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def format_analysis_result(result: ComentAnalysisResult, video_title: str) -> str:
+def format_analysis_result(result: str, video_title: str) -> str:
     """Format analysis result as a Telegram message."""
     
     # Emoji mapping for common category types
@@ -49,36 +49,19 @@ def format_analysis_result(result: ComentAnalysisResult, video_title: str) -> st
         f"📊 <b>Analysis Complete!</b>",
         f"",
         f"🎬 <b>Video:</b> {video_title}",
-        f"💬 <b>Comments analyzed:</b> {result.total_comments}",
+        f"💬 <b>Comments analyzed:</b> ",
+        f"{result}",
         f"",
-        f"━━━━━━━━━━━━━━━━━━━━━",
-        f"",
-        f"🏆 <b>DOMINANT COMMENT TYPE:</b>",
-        f"{get_emoji(result.dominant_category.name)} <b>{result.dominant_category.name}</b>",
-        f"   • {result.dominant_category.percentage}% of comments ({result.dominant_category.count} comments)",
-        f"   • {result.dominant_category.description}",
         f"",
     ]
-    
-    # Add example from dominant category
-    if result.dominant_category.example_comments:
-        lines.append(f"   💬 <i>\"{result.dominant_category.example_comments[0][:100]}...\"</i>")
-        lines.append("")
     
     lines.extend([
         f"━━━━━━━━━━━━━━━━━━━━━",
         f"",
         f"👍 <b>MOST LIKED COMMENT TYPE:</b>",
-        f"{get_emoji(result.most_liked_category.name)} <b>{result.most_liked_category.name}</b>",
-        f"   • {result.most_liked_category.percentage}% of comments ({result.most_liked_category.count} comments)",
-        f"   • {result.most_liked_category.description}",
         f"",
     ])
     
-    # Add example from most liked category
-    if result.most_liked_category.example_comments:
-        lines.append(f"   💬 <i>\"{result.most_liked_category.example_comments[0][:100]}...\"</i>")
-        lines.append("")
     
     lines.extend([
         f"━━━━━━━━━━━━━━━━━━━━━",
@@ -86,21 +69,7 @@ def format_analysis_result(result: ComentAnalysisResult, video_title: str) -> st
         f"📈 <b>ALL CATEGORIES:</b>",
     ])
     
-    # Sort categories by count
-    sorted_categories = sorted(result.all_categories, key=lambda c: c.count, reverse=True)
-    for cat in sorted_categories:
-        emoji = get_emoji(cat.name)
-        bar_length = int(cat.percentage / 5)  # Scale to max ~20 chars
-        bar = '█' * bar_length + '░' * (20 - bar_length)
-        lines.append(f"{emoji} {cat.name}: {bar} {cat.percentage}%")
     
-    lines.extend([
-        f"",
-        f"━━━━━━━━━━━━━━━━━━━━━",
-        f"",
-        f"📝 <b>Summary:</b>",
-        f"{result.summary}",
-    ])
     
     return '\n'.join(lines)
 
