@@ -1,4 +1,6 @@
 import re
+import random
+from typing import Literal
 from dataclasses import dataclass
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -53,17 +55,28 @@ class YouTubeService:
         except HttpError:
             return None
     
-    def get_comments(self, video_id: str) -> list[Comment]:
-        """Fetch top comments for a video sorted by relevance."""
+    def get_comments(self, 
+                    video_id: str,
+                    comment_chunk_size: int = None,
+                    order: Literal['time', 'relevance'] = 'relevance',
+                    # mode: Literal['random', 'top'] = 'random'
+                    ) -> list[Comment]:
+        """
+        Fetch top comments for a video sorted by relevance or time.
+        pram video_id: YouTube video ID
+        param comment_chunk_size: Number of comments to fetch (default: max_comments from settings)
+        param order: Order of comments, either 'time' or 'relevance' (default: 'relevance')
+        """
         comments = []
-        
+        if comment_chunk_size is None:
+            comment_chunk_size = self.max_comments
         try:
             # Fetch top-level comments sorted by relevance
             response = self.youtube.commentThreads().list(
                 part='snippet',
                 videoId=video_id,
-                order='relevance',
-                maxResults=min(self.max_comments, 100),
+                order=order,
+                maxResults=comment_chunk_size,
                 textFormat='plainText'
             ).execute()
             
@@ -77,27 +90,28 @@ class YouTubeService:
                 ))
             
             # Fetch more if needed and available
-            next_page_token = response.get('nextPageToken')
-            while next_page_token and len(comments) < self.max_comments:
-                response = self.youtube.commentThreads().list(
-                    part='snippet',
-                    videoId=video_id,
-                    order='relevance',
-                    maxResults=min(self.max_comments - len(comments), 100),
-                    pageToken=next_page_token,
-                    textFormat='plainText'
-                ).execute()
+            # Commenred out for now to limit to single chunk for beta launch
+            # next_page_token = response.get('nextPageToken')
+            # while next_page_token and len(comments) < self.max_comments:
+            #     response = self.youtube.commentThreads().list(
+            #         part='snippet',
+            #         videoId=video_id,
+            #         order='relevance',
+            #         maxResults=min(self.max_comments - len(comments), 100),
+            #         pageToken=next_page_token,
+            #         textFormat='plainText'
+            #     ).execute()
                 
-                for item in response.get('items', []):
-                    snippet = item['snippet']['topLevelComment']['snippet']
-                    comments.append(Comment(
-                        text=snippet.get('textDisplay', ''),
-                        like_count=snippet.get('likeCount', 0),
-                        author=snippet.get('authorDisplayName', 'Anonymous'),
-                        reply_count=item['snippet'].get('totalReplyCount', 0)
-                    ))
+            #     for item in response.get('items', []):
+            #         snippet = item['snippet']['topLevelComment']['snippet']
+            #         comments.append(Comment(
+            #             text=snippet.get('textDisplay', ''),
+            #             like_count=snippet.get('likeCount', 0),
+            #             author=snippet.get('authorDisplayName', 'Anonymous'),
+            #             reply_count=item['snippet'].get('totalReplyCount', 0)
+            #         ))
                 
-                next_page_token = response.get('nextPageToken')
+            #     next_page_token = response.get('nextPageToken')
         
         except HttpError as e:
             if e.resp.status == 403:
@@ -107,6 +121,7 @@ class YouTubeService:
             raise
         
         return comments
+
 
 
 # Singleton instance

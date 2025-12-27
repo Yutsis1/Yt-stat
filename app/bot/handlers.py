@@ -101,7 +101,7 @@ async def set_language(callback: CallbackQuery):
         _user_languages[user_id] = selected_language
 
     await callback.message.edit_text(
-        t(selected_language, "language_set", language=get_language_name(selected_language)),
+        t(selected_language, "language_set", language_name=get_language_name(selected_language)),
         parse_mode=ParseMode.HTML,
     )
     await callback.answer()
