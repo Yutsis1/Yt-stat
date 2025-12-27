@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     webhook_url: str | None = Field(default=None, description="Webhook URL for production")
     
     # App settings
-    max_comments: int = Field(default=100, description="Maximum comments to fetch")
+    max_comments: int = Field(default=30, description="Maximum comments to fetch")
 
     # Prompt ID for single comment analysis
     comment_prompt_id: str = Field(

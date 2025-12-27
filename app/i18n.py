@@ -16,13 +16,14 @@ STRINGS = {
             "Send me a YouTube video link and I'll analyze the comments to tell you:\n\n"
             "<b>Dominant comment type</b> - What kind of comments appear most\n"
             "<b>Most liked comment type</b> - What kind of comments get the most likes\n\n"
-            "Just paste a YouTube link to get started!"
+            "Paste the link for your video here and you will get summary for 30 random comments."
         ),
         "help": (
             "<b>How to use this bot:</b>\n\n"
             "1. Copy a YouTube video URL\n"
             "2. Paste it here\n"
             "3. Wait for the analysis (usually 10-30 seconds)\n\n"
+            "Paste the link for your video here and you will get summary for 30 random comments.\n\n"
             "<b>Supported URL formats:</b>\n"
             "- https://youtube.com/watch?v=VIDEO_ID\n"
             "- https://youtu.be/VIDEO_ID\n"
@@ -69,7 +70,7 @@ STRINGS = {
             "too many comments or there might be an API issue."
         ),
         "language_select": "<b>Select language:</b>",
-        "language_set": "Language set to <b>{language}</b>.",
+        "language_set": "Language set to <b>{language_name}</b>.",
     },
     "ru": {
         "analysis_complete": "Анализ завершен!",
@@ -81,13 +82,14 @@ STRINGS = {
             "Отправьте ссылку на видео YouTube, и я проанализирую комментарии и скажу:\n\n"
             "<b>Преобладающий тип комментариев</b> - какие комментарии встречаются чаще всего\n"
             "<b>Самый популярный тип комментариев</b> - какие комментарии получают больше всего лайков\n\n"
-            "Просто отправьте ссылку на YouTube, чтобы начать!"
+            "Вставьте ссылку на ваше видео сюда, и вы получите сводку по 30 случайным комментариям."
         ),
         "help": (
             "<b>Как пользоваться ботом:</b>\n\n"
             "1. Скопируйте ссылку на видео YouTube\n"
             "2. Отправьте ее сюда\n"
             "3. Дождитесь анализа (обычно 10-30 секунд)\n\n"
+            "Вставьте ссылку на ваше видео сюда, и вы получите сводку по 30 случайным комментариям.\n\n"
             "<b>Поддерживаемые форматы ссылок:</b>\n"
             "- https://youtube.com/watch?v=VIDEO_ID\n"
             "- https://youtu.be/VIDEO_ID\n"
@@ -134,7 +136,7 @@ STRINGS = {
             "слишком много комментариев или есть проблема с API."
         ),
         "language_select": "<b>Выберите язык:</b>",
-        "language_set": "Язык установлен: <b>{language}</b>.",
+        "language_set": "Язык установлен: <b>{language_name}</b>.",
     },
 }
 
