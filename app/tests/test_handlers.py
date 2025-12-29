@@ -46,6 +46,7 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
     final_message = processing_msg.edit_text.call_args_list[-1].args[0]
     assert "Summary text" in final_message
     assert "Test Video" in final_message
+    assert "Comments by sentiment" in final_message
 
     youtube_service.extract_video_id.assert_called_once_with("https://youtu.be/video123")
     youtube_service.get_video_info.assert_called_once_with("video123")
