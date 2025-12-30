@@ -1,0 +1,28 @@
+{
+  "keys": [
+    "analysis_complete",
+    "video_label",
+    "channel_label",
+    "comments_analyzed",
+    "welcome",
+    "help",
+    "invalid_link",
+    "processing",
+    "video_not_found",
+    "analyzing_comments",
+    "no_comments",
+    "found_comments",
+    "cannot_access_comments",
+    "error",
+    "error_occurred",
+    "language_select",
+    "language_set",
+    "comments_by_sentiment_title",
+    "likes_by_sentiment_title",
+    "sentiment_positive",
+    "sentiment_negative",
+    "sentiment_neutral",
+    "sentiment_nonsensical",
+    "sentiment_off_topic"
+  ]
+}

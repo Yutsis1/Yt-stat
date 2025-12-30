@@ -7,7 +7,7 @@ import json
 import re
 
 from app.config import get_settings
-from app.modals import ComentAnalysisResult, Comment
+from app.modals import  Comment, CommentAnalysisResult
 
 
 class CommentAnalyzer:
@@ -87,7 +87,7 @@ class CommentAnalyzer:
         semaphore: asyncio.Semaphore,
         prompt=None,
         language: str | None = None,
-    ) -> Optional[ComentAnalysisResult]:
+    ) -> Optional[CommentAnalysisResult]:
         if self.contains_link(comment.text):
             return None
 
@@ -97,7 +97,7 @@ class CommentAnalyzer:
                 input=comment.text,
                 prompt=prompt or self._build_prompt(self.comment_prompt_id, language),
             )
-            return ComentAnalysisResult(**json.loads(resp.output_text))
+            return CommentAnalysisResult(**json.loads(resp.output_text))
 
     async def categorize_comments_async(
         self,
@@ -182,7 +182,7 @@ class CommentAnalyzer:
         :rtype: Optional[Sentiment]
         """
         likes_by_sentiment = Counter(
-            {s: 0 for s in ComentAnalysisResult.__annotations__['sentiment'].__args__})
+            {s: 0 for s in CommentAnalysisResult.__annotations__['sentiment'].__args__})
 
         for comment in comments:
             if comment.analysis_result:

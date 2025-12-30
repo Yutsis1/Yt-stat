@@ -54,6 +54,45 @@ def format_analysis_result(
     return "\n".join(lines)
 
 
+def format_sentiment_and_likes(language: str, sentiment_counts, likes_by_sentiment) -> tuple[str, str]:
+    """Format sentiment counts and likes per sentiment into localized strings."""
+    # Normalize inputs (accept Counter, dict or None)
+    sentiment_counts = sentiment_counts or {}
+    likes_by_sentiment = likes_by_sentiment or {}
+
+    key_map = {
+        "positive": "sentiment_positive",
+        "negative": "sentiment_negative",
+        "neutral": "sentiment_neutral",
+        "nonsensical": "sentiment_nonsensical",
+        "off-topic": "sentiment_off_topic",
+    }
+
+    # Comments by sentiment
+    try:
+        items = sorted(sentiment_counts.items(), key=lambda x: -x[1])
+    except Exception:
+        items = []
+    lines1 = [t(language, "comments_by_sentiment_title")]
+    for s, c in items:
+        label_key = key_map.get(s, s)
+        label = t(language, label_key)
+        lines1.append(f"{label}: {c}")
+
+    # Likes by sentiment
+    try:
+        items2 = sorted(likes_by_sentiment.items(), key=lambda x: -x[1])
+    except Exception:
+        items2 = []
+    lines2 = [t(language, "likes_by_sentiment_title")]
+    for s, c in items2:
+        label_key = key_map.get(s, s)
+        label = t(language, label_key)
+        lines2.append(f"{label}: {c}")
+
+    return ("\n".join(lines1), "\n".join(lines2))
+
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     """Handle /start command."""
@@ -182,13 +221,14 @@ async def handle_youtube_link(message: Message):
         result = await analyzer.analyze_async(comments, language=language)
         count_comments_per_sentiment = analyzer.count_comment_per_sentiment(comments)
         likes_per_category = analyzer.count_likes_per_category(comments)
+        sentiments_text, likes_text = format_sentiment_and_likes(language, count_comments_per_sentiment, likes_per_category)
         # Format and send result
         response = format_analysis_result(
             result,
             video_info.title,
             language,
-            count_comments_per_sentiment,
-            likes_per_category,
+            sentiments_text,
+            likes_text,
         )
         await processing_msg.edit_text(response, parse_mode=ParseMode.HTML)
 

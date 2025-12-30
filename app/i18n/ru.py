@@ -63,5 +63,12 @@ STRINGS_RU = {"ru": {
     ),
     "language_select": "<b>Выберите язык:</b>",
     "language_set": "Язык установлен: <b>{language_name}</b>.",
+    "comments_by_sentiment_title": "Комментарии по настроению:",
+    "likes_by_sentiment_title": "Лайки по настроению (всего лайков):",
+    "sentiment_positive": "Положительные",
+    "sentiment_negative": "Отрицательные",
+    "sentiment_neutral": "Нейтральные",
+    "sentiment_nonsensical": "Бессмысленные",
+    "sentiment_off_topic": "Не по теме",
 },
-}
+} 

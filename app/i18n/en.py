@@ -64,5 +64,12 @@ STRINGS_EN = {
         ),
         "language_select": "<b>Select language:</b>",
         "language_set": "Language set to <b>{language_name}</b>.",
+        "comments_by_sentiment_title": "Comments by sentiment:",
+        "likes_by_sentiment_title": "Likes by sentiment (total likes):",
+        "sentiment_positive": "Positive",
+        "sentiment_negative": "Negative",
+        "sentiment_neutral": "Neutral",
+        "sentiment_nonsensical": "Nonsensical",
+        "sentiment_off_topic": "Off-topic",
     },
-}
+} 
