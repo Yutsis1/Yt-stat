@@ -12,6 +12,7 @@ Quick start (developer)
 - Run locally (polling/dev): `python run_polling.py`
 - Run webhook (production-like): `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 - Tests: `pytest` (project includes pytest and pytest-asyncio)
+- Debugging: When running or debugging from your editor/IDE, make sure to use the project's .venv Python interpreter for execution (activate the virtualenv with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\activate` on Windows), or configure your debugger to use the `.venv` python executable.
 
 Architecture & important files
 - `app/main.py` — FastAPI app and lifecycle; will run bot as either polling (dev) or webhook (production). Use `run_polling.py` for local testing.
@@ -54,5 +55,6 @@ How to extend or mock OpenAI behavior
 Contribution tips
 - Keep the async + sync boundary in mind. Analyzer provides both async (`analyze_async`) and a sync wrapper (`categorize_comments`) which uses `asyncio.run`.
 - When adding features that change message text, update i18n entries under `app/i18n/` and add tests asserting final message content (see `tests/test_handlers.py`).
+
 
 If anything here is unclear or you want more examples (e.g., a stub for testing another OpenAI pattern or an example of adding a new i18n string), tell me which area you'd like expanded and I will update this file. Thanks! ✅
