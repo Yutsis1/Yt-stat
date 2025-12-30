@@ -9,7 +9,7 @@ class Comment:
     like_count: int
     author: str
     reply_count: int = 0
-    analysis_result: CommentAnalysisResult = None
+    analysis_result: "CommentAnalysisResult" = None
 
 @dataclass
 class CommentAnalysisResult:
