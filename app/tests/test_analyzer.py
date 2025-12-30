@@ -1,7 +1,7 @@
 import pytest
 
 from app.config import get_settings
-from app.modals import Comment
+from app.modals import Comment, CommentAnalysisResult
 from app.services.analyzer import CommentAnalyzer
 from app.tests.mock_library import OpenAIMock
 
