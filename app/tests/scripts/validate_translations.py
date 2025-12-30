@@ -14,9 +14,27 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-ROOT = Path(__file__).parent.parent.parent
-SCHEMA_PATH = ROOT / "app" / "i18n" / "strings_schema.json"
 I18N_PKG = "app.i18n"
+
+
+def locate_schema_path() -> Path:
+    """Locate strings_schema.json by searching parent directories.
+
+    This makes the validator robust when imported from different package
+    contexts (tests, installed package, etc.).
+    """
+    here = Path(__file__).resolve()
+    for p in [here] + list(here.parents):
+        candidate = p / "app" / "i18n" / "strings_schema.json"
+        if candidate.exists():
+            return candidate
+    candidate = Path.cwd() / "app" / "i18n" / "strings_schema.json"
+    if candidate.exists():
+        return candidate
+    raise FileNotFoundError("strings_schema.json not found; looked in parents and cwd")
+
+
+SCHEMA_PATH = locate_schema_path()
 
 
 def load_schema() -> List[str]:
