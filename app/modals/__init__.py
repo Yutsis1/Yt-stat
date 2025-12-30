@@ -9,10 +9,10 @@ class Comment:
     like_count: int
     author: str
     reply_count: int = 0
-    analysis_result: ComentAnalysisResult = None
+    analysis_result: CommentAnalysisResult = None
 
 @dataclass
-class ComentAnalysisResult:
+class CommentAnalysisResult:
     """Holds analysis results for a comment."""
     sentiment: Literal["positive", "negative", "neutral", "nonsensical", "off-topic"]
     main_theme: str
