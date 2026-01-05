@@ -6,7 +6,7 @@ from openai import DefaultAioHttpClient, RateLimitError, AsyncOpenAI
 import json
 import re
 
-from app.config import get_settings
+from config import get_settings
 from app.modals import  Comment, CommentAnalysisResult
 
 

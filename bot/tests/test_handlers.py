@@ -2,7 +2,7 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from app.bot import handlers
+from bot import handlers
 from app.modals import Comment, VideoInfo
 
 
