@@ -38,7 +38,7 @@ app = FastAPI(
 @app.get("/health")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "message": "YouTube Comment Analyzer Bot is running"}
+    return {"status": "ok"}
 
 # For running with: uvicorn app.main:app
 if __name__ == "__main__":

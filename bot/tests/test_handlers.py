@@ -21,6 +21,11 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
         get_comments=Mock(return_value=comments),
     )
 
+    # Ensure handler thinks the bot is authorized and avoid scheduling background tasks in tests
+    monkeypatch.setattr(handlers, 'ensure_authorized', AsyncMock(return_value=True))
+    monkeypatch.setattr(handlers, 'post_ingest', AsyncMock(return_value={}))
+    monkeypatch.setattr(handlers.asyncio, 'create_task', lambda c: None)
+
     analyzer = SimpleNamespace(
         analyze_async=AsyncMock(return_value="Summary text"),
         count_comment_per_sentiment=Mock(return_value={"positive": 1, "negative": 1}),
@@ -51,3 +56,22 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
     youtube_service.extract_video_id.assert_called_once_with("https://youtu.be/video123")
     youtube_service.get_video_info.assert_called_once_with("video123")
     youtube_service.get_comments.assert_called_once_with("video123")
+
+
+@pytest.mark.asyncio
+async def test_requires_authorization_shows_message(monkeypatch):
+    handlers._user_languages.clear()
+    message = SimpleNamespace(
+        text="https://youtu.be/video123",
+        from_user=SimpleNamespace(id=42),
+        answer=AsyncMock(),
+    )
+
+    # Simulate unauthorized state
+    monkeypatch.setattr(handlers, 'ensure_authorized', AsyncMock(return_value=False))
+
+    await handlers.handle_youtube_link(message)
+
+    message.answer.assert_awaited_once()
+    called_msg = message.answer.call_args.args[0]
+    assert "authorize" in called_msg.lower() or "/start" in called_msg.lower()

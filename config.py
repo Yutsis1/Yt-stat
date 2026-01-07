@@ -25,6 +25,12 @@ class Settings(BaseSettings):
         description="Webhook URL for production",
     )
 
+    # Base URL for internal API calls (bot → FastAPI)
+    api_base_url: str = Field(
+        default="http://localhost:8000",
+        description="Base URL for API server",
+    )
+
     # ===================== App =====================
     max_comments: int = Field(
         default=30,

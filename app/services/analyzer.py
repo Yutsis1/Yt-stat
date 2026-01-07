@@ -7,7 +7,7 @@ import json
 import re
 
 from config import get_settings
-from app.modals import  Comment, CommentAnalysisResult
+from app.modals.video import  Comment, CommentAnalysisResult
 
 
 class CommentAnalyzer:

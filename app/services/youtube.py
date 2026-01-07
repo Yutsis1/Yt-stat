@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from config import get_settings
-from app.modals import Comment, VideoInfo
+from app.modals.video import Comment, VideoInfo
 
 
 

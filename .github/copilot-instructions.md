@@ -9,14 +9,15 @@ Quick start (developer)
 - Provide env vars (or copy `.env.example` to `.env` and edit):
   - `TELEGRAM_BOT_TOKEN`, `YOUTUBE_API_KEY`, `OPENAI_API_KEY`
   - `COMMENT_PROMPT_ID`, `TOPIC_ANALYSIS_PROMPT_ID` (used to select stored prompts in OpenAI responses)
+  - If you update `config.py`, also update `.env.example` and any tests that rely on those settings (tests should call `get_settings.cache_clear()` to  pick up changes).
 - Run locally (polling/dev): `python run_polling.py`
-- Run webhook (production-like): `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+- Run (production-like): `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 - Tests: `pytest` (project includes pytest and pytest-asyncio)
 - Debugging: When running or debugging from your editor/IDE, make sure to use the project's .venv Python interpreter for execution (activate the virtualenv with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\activate` on Windows), or configure your debugger to use the `.venv` python executable.
 
 Architecture & important files
-- `app/main.py` — FastAPI app and lifecycle; will run bot as either polling (dev) or webhook (production). Use `run_polling.py` for local testing.
-- `app/bot/handlers.py` — Telegram handlers and message flow. Key responsibilities:
+- `app/main.py` — FastAPI app and lifecycle; will run bot as either polling (dev) or (production). Use `run_polling.py` for local testing.
+- `bot/handlers.py` — Telegram handlers and message flow. Key responsibilities:
   - Validate / extract YouTube ID
   - Use `get_youtube_service()` for video/comments
   - Use `get_analyzer()` to run OpenAI analysis

@@ -7,6 +7,8 @@ from aiogram.enums import ParseMode
 from app.i18n import DEFAULT_LANGUAGE, LANGUAGE_NAMES, get_language_name, t
 from app.services.youtube import get_youtube_service
 from app.services.analyzer import get_analyzer
+from bot.auth_client import ensure_authorized, get_bot_token, post_ingest
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +97,22 @@ def format_sentiment_and_likes(language: str, sentiment_counts, likes_by_sentime
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
-    """Handle /start command."""
+    """Handle /start command: attempt to obtain an API token to authorize the bot."""
     language = get_user_language(message.from_user.id if message.from_user else None)
+
+    # Attempt to get a token and report result
+    if await ensure_authorized():
+        await message.answer(
+            t(language, "authorize_success"),
+            parse_mode=ParseMode.HTML,
+        )
+    else:
+        await message.answer(
+            t(language, "authorize_failed"),
+            parse_mode=ParseMode.HTML,
+        )
+
+    # Also show the welcome message for convenience
     await message.answer(
         t(language, "welcome"),
         parse_mode=ParseMode.HTML,
@@ -151,6 +167,14 @@ async def handle_youtube_link(message: Message):
     """Handle YouTube link messages."""
     text = message.text.strip()
     language = get_user_language(message.from_user.id if message.from_user else None)
+
+    # Ensure the bot is authorized (we require a bot token to call protected endpoints)
+    if not await ensure_authorized():
+        await message.answer(
+            t(language, "please_authorize"),
+            parse_mode=ParseMode.HTML,
+        )
+        return
 
     youtube_service = get_youtube_service()
 
@@ -231,6 +255,12 @@ async def handle_youtube_link(message: Message):
             likes_text,
         )
         await processing_msg.edit_text(response, parse_mode=ParseMode.HTML)
+
+        # Fire-and-forget ingest to the protected bot endpoint (non-blocking)
+        try:
+            asyncio.create_task(post_ingest({"video_id": video_id, "summary": result}))
+        except Exception:
+            logger.exception("Failed to enqueue ingest task")
 
     except PermissionError as e:
         await processing_msg.edit_text(
