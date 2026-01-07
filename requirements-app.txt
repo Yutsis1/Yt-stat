@@ -1,0 +1,6 @@
+# FastAPI service dependencies
+-r requirements-common.txt
+
+fastapi>=0.125.0
+uvicorn[standard]>=0.32.0
+python-jose[cryptography]>=3.5.0

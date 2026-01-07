@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.14-slim
+
+# Prevent Python from writing pyc files and buffer stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install dependencies with cache mount for faster rebuilds
+COPY requirements-bot.txt requirements-bot.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements-bot.txt
+
+# Copy application code
+COPY . .
+
+# Run bot in polling mode
+CMD ["python", "run_polling.py"]
