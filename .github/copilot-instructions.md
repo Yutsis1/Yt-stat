@@ -29,7 +29,7 @@ Architecture & important files
   - Uses `openai.AsyncOpenAI` (`openai.responses.create`) with `model`, `input`, `prompt` and expects `output_text` on the response
   - Concurrency knobs: `MAX_IN_FLIGHT_REQUESTS`, `BATCH_SIZE`, `MAX_RETRIES`, `BASE_BACKOFF_S` — tune for rate limiting
   - Skips comments that contain links (see `contains_link()`) to avoid spam/irrelevant items
-- `app/modals/__init__.py` — Domain dataclasses: `Comment`, `ComentAnalysisResult` (note: spelled `Coment...` in code), `VideoInfo` — tests rely on these shapes.
+- `app/modals/__init__.py` — Domain dataclasses: `Comment`, `ComentAnalysisResult`,  `VideoInfo` — tests rely on these shapes.
 - `app/i18n/*` — Localization strings; `t(language, key, ...)` helper is used to format messages.
 
 Testing & common test patterns
