@@ -49,6 +49,8 @@ Behavioral quirks & gotchas (do not change without understanding)
 - Analyzer uses `responses.create(model=..., input=..., prompt=...)` and parses `resp.output_text` as JSON (for single comment analysis). Follow that contract when making changes.
 - `youtube.get_comments()` currently fetches a single page (comment pagination is intentionally commented out) — behavior and limits are by design until expanded.
 
+
+Every time when creates `app.services` need to add its own test mock under `app.tests.mock_library`.
 How to extend or mock OpenAI behavior
 - Test helpers: prefer `OpenAIMock` to mimic real responses and capture calls.
 - Production code uses `COMMENT_PROMPT_ID` and `TOPIC_ANALYSIS_PROMPT_ID` from settings — provide proper Prompt IDs or values in your environment when integrating with OpenAI.

@@ -1,11 +1,5 @@
-import time
-import secrets
-from typing import Optional, Dict, Any
-
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
+from fastapi import FastAPI, APIRouter, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
-from app.modals.auth import TokenRequest, TokenResponse
 from app.modals.video import VideoAnalysisRequest, VideoAnalysisResponse
 from app.services.analyzer import get_analyzer
 from app.services.youtube import get_youtube_service
@@ -30,10 +24,10 @@ async def analyze_youtube_video(
     comments = youtube_service.get_comments(video_id)
     analyzer = get_analyzer()
     result = await analyzer.analyze_async(comments, language=request.language)
-    count_comments_per_sentiment = analyzer.count_comment_per_sentiment(comments)
+    count_comments_per_sentiment = analyzer.count_comment_per_sentiment(
+        comments)
     likes_per_category = analyzer.count_likes_per_category(comments)
 
-    
     return VideoAnalysisResponse(
         analyze_result=result,
         count_comments_per_sentiment=dict(count_comments_per_sentiment),
