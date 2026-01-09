@@ -22,3 +22,14 @@ class VideoInfo(BaseModel):
     video_id: str
     title: str
     channel: str
+
+class VideoAnalysisRequest(BaseModel):
+    """Request model for video analysis."""
+    video_url: str
+    language: Optional[Literal["en", "ru"]] = "en"  # Default to English
+
+class VideoAnalysisResponse(BaseModel):
+    """Response model for video analysis."""
+    analyze_result: str
+    count_comments_per_sentiment: dict[str, int]
+    likes_per_category: dict[str, int]

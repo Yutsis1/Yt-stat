@@ -5,7 +5,7 @@ Summary
 - Key flows: Telegram message -> `app.bot.handlers` -> `app.services.youtube` fetches comments -> `app.services.analyzer` calls OpenAI Responses API to categorize comments and produce a topic summary.
 
 Quick start (developer)
-- Create and activate a venv, install deps: `pip install -r requirements.txt` (Python 3.11+)
+- Create and activate a venv, install deps: `pip install -r requirements.txt` (Python 3.14+)
 - Provide env vars (or copy `.env.example` to `.env` and edit):
   - `TELEGRAM_BOT_TOKEN`, `YOUTUBE_API_KEY`, `OPENAI_API_KEY`
   - `COMMENT_PROMPT_ID`, `TOPIC_ANALYSIS_PROMPT_ID` (used to select stored prompts in OpenAI responses)

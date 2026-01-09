@@ -131,15 +131,15 @@ class CommentAnalyzer:
         Async version of analyze() that assumes comments already have analysis_result,
         or calls categorize first if you prefer.
         """
-        await self.categorize_comments_async(comments, language=language)
+        categorized_comments = await self.categorize_comments_async(comments, language=language)
         comments_theme_list = [
             {
                 "main_theme": c.analysis_result.main_theme,
                 "like_count": c.like_count,
                 "sentiment": c.analysis_result.sentiment,
             }
-            for c in comments
-            if c.analysis_result and c.analysis_result.main_theme
+            for c in categorized_comments
+            if c and c.analysis_result and c.analysis_result.main_theme
         ]
 
         resp = await self._call_with_retries(
