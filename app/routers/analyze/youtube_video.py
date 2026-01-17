@@ -1,11 +1,8 @@
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.modals.video import VideoAnalysisRequest, VideoAnalysisResponse, VideoInfo
 from app.services.analyzer import get_analyzer
 from app.services.youtube import get_youtube_service
-from config import get_settings
-
-settings = get_settings()
+from app.routers.auth.auth import require_bot_jwt
 
 app = FastAPI()
 youtube_router = APIRouter(
@@ -17,7 +14,7 @@ youtube_router = APIRouter(
 @youtube_router.post("/comments", response_model=VideoAnalysisResponse)
 async def analyze_youtube_video(
     request: VideoAnalysisRequest,
-    creds: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=True)),
+    _auth_payload: dict = Depends(require_bot_jwt),
 ) -> VideoAnalysisResponse:
     youtube_service = get_youtube_service()
     video_id = youtube_service.extract_video_id(request.video_url)

@@ -1,14 +1,20 @@
 from fastapi.testclient import TestClient
 import pytest
-from unittest.mock import Mock
-from types import SimpleNamespace
 
 from app.routers.analyze.youtube_video import app  # Import the specific router app
+from app.routers.auth.auth import require_bot_jwt
 from app.tests.helpers.mock_library import YouTubeMock, OpenAIMock
 from app.modals.video import Comment, VideoInfo, CommentAnalysisResult
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def override_auth():
+    app.dependency_overrides[require_bot_jwt] = lambda: {"sub": "test", "scopes": ["bot"]}
+    yield
+    app.dependency_overrides.pop(require_bot_jwt, None)
 
 
 @pytest.mark.asyncio
@@ -60,16 +66,6 @@ async def test_get_analyzis_for_comments(monkeypatch):
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_youtube_service", lambda: youtube_mock)
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_analyzer", lambda: analyzer)
     
-    # Mock authentication to bypass JWT validation
-    def mock_auth_dependency():
-        return SimpleNamespace(credentials="mock_token")
-    
-    from fastapi.security import HTTPBearer
-    monkeypatch.setattr(
-        "app.routers.analyze.youtube_video.HTTPBearer.__call__",
-        lambda self, request: mock_auth_dependency()
-    )
-    
     # Make the request
     response = client.post("/analyze/youtube/comments", json={
         "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
@@ -113,16 +109,6 @@ async def test_invalid_video_id(monkeypatch):
     
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_youtube_service", lambda: youtube_mock)
     
-    # Mock authentication
-    def mock_auth_dependency():
-        return SimpleNamespace(credentials="mock_token")
-    
-    from fastapi.security import HTTPBearer
-    monkeypatch.setattr(
-        "app.routers.analyze.youtube_video.HTTPBearer.__call__",
-        lambda self, request: mock_auth_dependency()
-    )
-    
     # Make request with invalid URL - should return 400 since id isn't registered
     response = client.post("/analyze/youtube/comments", json={
         "video_url": "https://www.youtube.com/watch?v=invalid",
@@ -150,16 +136,6 @@ async def test_comments_disabled(monkeypatch):
     
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_youtube_service", lambda: youtube_mock)
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_analyzer", lambda: analyzer)
-    
-    # Mock authentication
-    def mock_auth_dependency():
-        return SimpleNamespace(credentials="mock_token")
-    
-    from fastapi.security import HTTPBearer
-    monkeypatch.setattr(
-        "app.routers.analyze.youtube_video.HTTPBearer.__call__",
-        lambda self, request: mock_auth_dependency()
-    )
     
     # Make request - should return 403
     response = client.post("/analyze/youtube/comments", json={
@@ -189,16 +165,6 @@ async def test_video_not_found(monkeypatch):
     
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_youtube_service", lambda: youtube_mock)
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_analyzer", lambda: analyzer)
-    
-    # Mock authentication
-    def mock_auth_dependency():
-        return SimpleNamespace(credentials="mock_token")
-    
-    from fastapi.security import HTTPBearer
-    monkeypatch.setattr(
-        "app.routers.analyze.youtube_video.HTTPBearer.__call__",
-        lambda self, request: mock_auth_dependency()
-    )
     
     # Make request - should return 404
     response = client.post("/analyze/youtube/comments", json={
@@ -236,16 +202,6 @@ async def test_empty_comments_list(monkeypatch):
     
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_youtube_service", lambda: youtube_mock)
     monkeypatch.setattr("app.routers.analyze.youtube_video.get_analyzer", lambda: analyzer)
-    
-    # Mock authentication
-    def mock_auth_dependency():
-        return SimpleNamespace(credentials="mock_token")
-    
-    from fastapi.security import HTTPBearer
-    monkeypatch.setattr(
-        "app.routers.analyze.youtube_video.HTTPBearer.__call__",
-        lambda self, request: mock_auth_dependency()
-    )
     
     # Make request - should return 400 for empty comments
     response = client.post("/analyze/youtube/comments", json={

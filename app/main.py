@@ -5,6 +5,8 @@ from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 from config import get_settings
+from app.routers.analyze.youtube_video import youtube_router
+from app.routers.auth.auth import auth_router, bot_router
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +33,10 @@ app = FastAPI(
     version="1.1.0",
     lifespan=lifespan
 )
+
+app.include_router(auth_router)
+app.include_router(bot_router)
+app.include_router(youtube_router)
 
 
 @app.get("/health")

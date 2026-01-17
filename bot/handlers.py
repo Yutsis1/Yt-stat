@@ -17,12 +17,19 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 _user_languages: dict[int, str] = {}
+_authorized_users: set[int] = set()
 
 
 def get_user_language(user_id: int | None) -> str:
     if user_id is None:
         return DEFAULT_LANGUAGE
     return _user_languages.get(user_id, DEFAULT_LANGUAGE)
+
+
+def is_user_authorized(user_id: int | None) -> bool:
+    if user_id is None:
+        return False
+    return user_id in _authorized_users
 
 
 def language_keyboard() -> InlineKeyboardMarkup:
@@ -101,15 +108,20 @@ def format_sentiment_and_likes(language: str, sentiment_counts, likes_by_sentime
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     """Handle /start command: attempt to obtain an API token to authorize the bot."""
-    language = get_user_language(message.from_user.id if message.from_user else None)
+    user_id = message.from_user.id if message.from_user else None
+    language = get_user_language(user_id)
 
     # Attempt to get a token and report result
     if await ensure_authorized():
+        if user_id is not None:
+            _authorized_users.add(user_id)
         await message.answer(
             t(language, "authorize_success"),
             parse_mode=ParseMode.HTML,
         )
     else:
+        if user_id is not None:
+            _authorized_users.discard(user_id)
         await message.answer(
             t(language, "authorize_failed"),
             parse_mode=ParseMode.HTML,
@@ -169,12 +181,23 @@ async def set_language(callback: CallbackQuery):
 async def handle_youtube_link(message: Message):
     """Handle YouTube link messages."""
     text = message.text.strip()
-    language = get_user_language(message.from_user.id if message.from_user else None)
+    user_id = message.from_user.id if message.from_user else None
+    language = get_user_language(user_id)
+
+    # Require user session authorization before any API work
+    if not is_user_authorized(user_id):
+        await message.answer(
+            t(language, "please_authorize"),
+            parse_mode=ParseMode.HTML,
+        )
+        return
 
     # Ensure the bot is authorized (we require a bot token to call protected endpoints)
     if not await ensure_authorized():
+        if user_id is not None:
+            _authorized_users.discard(user_id)
         await message.answer(
-            t(language, "please_authorize"),
+            t(language, "authorize_failed"),
             parse_mode=ParseMode.HTML,
         )
         return

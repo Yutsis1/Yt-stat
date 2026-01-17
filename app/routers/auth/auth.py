@@ -9,11 +9,10 @@ from jose import jwt, JWTError
 from app.modals.auth import TokenRequest, TokenResponse
 from config import get_settings
 
-settings = get_settings()
-
 
 # ===== JWT helpers =====
 async def create_access_token(subject: str, scopes: Optional[list[str]] = None) -> str:
+    settings = get_settings()
     now = int(time.time())
     payload: Dict[str, Any] = {
         "iss": "your-fastapi-service",
@@ -26,6 +25,7 @@ async def create_access_token(subject: str, scopes: Optional[list[str]] = None) 
 
 
 async def verify_client_credentials(client_id: str, client_secret: str) -> None:
+    settings = get_settings()
     # constant-time comparisons
     if not secrets.compare_digest(client_id, settings.bot_client_id):
         raise HTTPException(
@@ -42,6 +42,7 @@ bearer = HTTPBearer(auto_error=False)
 async def require_bot_jwt(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> Dict[str, Any]:
+    settings = get_settings()
     if not creds or creds.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
@@ -74,6 +75,7 @@ bot_router = APIRouter(
 
 @auth_router.post("/token", response_model=TokenResponse)
 async def issue_token(req: TokenRequest):
+    settings = get_settings()
     await verify_client_credentials(req.client_id, req.client_secret)
     access_token = await create_access_token(subject="telegram-bot", scopes=["bot"])
     return TokenResponse(access_token=access_token, expires_in=settings.jwt_ttl_seconds)

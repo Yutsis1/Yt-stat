@@ -10,6 +10,7 @@ from app.modals import Comment, VideoInfo
 async def test_handle_youtube_link_uses_analyzer(monkeypatch):
     """Test that tg interface is working."""
     handlers._user_languages.clear()
+    handlers._authorized_users.clear()
     comments = [
         Comment(text="Nice!", like_count=2, author="A"),
         Comment(text="Not great", like_count=0, author="B"),
@@ -45,6 +46,7 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
         from_user=SimpleNamespace(id=42),
         answer=AsyncMock(return_value=processing_msg),
     )
+    handlers._authorized_users.add(42)
 
     await handlers.handle_youtube_link(message)
 
@@ -58,6 +60,7 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
 @pytest.mark.asyncio
 async def test_requires_authorization_shows_message(monkeypatch):
     handlers._user_languages.clear()
+    handlers._authorized_users.clear()
     message = SimpleNamespace(
         text="https://youtu.be/video123",
         from_user=SimpleNamespace(id=42),
