@@ -3,12 +3,15 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
+import httpx
 
 from app.i18n import DEFAULT_LANGUAGE, LANGUAGE_NAMES, get_language_name, t
 from app.services.youtube import get_youtube_service
 from app.services.analyzer import get_analyzer
 from bot.auth_client import ensure_authorized, get_bot_token, post_ingest
 import asyncio
+
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +200,7 @@ async def handle_youtube_link(message: Message):
     try:
         # Call the internal analyze endpoint (uses YouTube service + analyzer internally)
         try:
+            settings =  get_settings()
             token = await get_bot_token()
             headers = {"Authorization": f"Bearer {token}"}
             async with httpx.AsyncClient() as client:
