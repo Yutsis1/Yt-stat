@@ -195,17 +195,64 @@ async def handle_youtube_link(message: Message):
     )
 
     try:
-        # Get video info
-        video_info = youtube_service.get_video_info(video_id)
-        if not video_info:
+        # Call the internal analyze endpoint (uses YouTube service + analyzer internally)
+        try:
+            token = await get_bot_token()
+            headers = {"Authorization": f"Bearer {token}"}
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    f"{settings.api_base_url}/analyze/youtube/comments",
+                    json={"video_url": text, "language": language},
+                    headers=headers,
+                    timeout=30.0,
+                )
+
+            if r.status_code == 403:
+                await processing_msg.edit_text(
+                    t(language, "cannot_access_comments", error=r.text),
+                    parse_mode=ParseMode.HTML,
+                )
+                return
+            if r.status_code == 404:
+                await processing_msg.edit_text(
+                    t(language, "video_not_found"),
+                    parse_mode=ParseMode.HTML,
+                )
+                return
+            if r.status_code == 400:
+                body = r.json() if r.text else {}
+                detail = body.get("detail", r.text)
+                if "No comments" in str(detail):
+                    await processing_msg.edit_text(
+                        t(language, "no_comments"),
+                        parse_mode=ParseMode.HTML,
+                    )
+                else:
+                    await processing_msg.edit_text(
+                        t(language, "error", error=detail),
+                        parse_mode=ParseMode.HTML,
+                    )
+                return
+
+            r.raise_for_status()
+            data = r.json()
+        except httpx.HTTPStatusError as e:
             await processing_msg.edit_text(
-                t(language, "video_not_found"),
+                t(language, "error", error=str(e)),
+                parse_mode=ParseMode.HTML,
+            )
+            return
+        except Exception:
+            logger.exception("Error analyzing video")
+            await processing_msg.edit_text(
+                t(language, "error_occurred"),
                 parse_mode=ParseMode.HTML,
             )
             return
 
-        video_line = f"<b>{t(language, 'video_label')}:</b> {video_info.title}"
-        channel_line = f"<b>{t(language, 'channel_label')}:</b> {video_info.channel}"
+        video_info = data.get("video_info", {}) or {}
+        video_line = f"<b>{t(language, 'video_label')}:</b> {video_info.get('title', '')}"
+        channel_line = f"<b>{t(language, 'channel_label')}:</b> {video_info.get('channel', '')}"
 
         # Update message with video title
         await processing_msg.edit_text(
@@ -218,38 +265,27 @@ async def handle_youtube_link(message: Message):
             parse_mode=ParseMode.HTML,
         )
 
-        # Fetch comments
-        comments = youtube_service.get_comments(video_id)
-
-        if not comments:
-            await processing_msg.edit_text(
-                t(language, "no_comments"),
-                parse_mode=ParseMode.HTML,
-            )
-            return
-
         # Update progress
+        count = data.get("comments_count", 0)
         await processing_msg.edit_text(
             t(
                 language,
                 "found_comments",
                 video_line=video_line,
                 channel_line=channel_line,
-                count=len(comments),
+                count=count,
             ),
             parse_mode=ParseMode.HTML,
         )
 
-        # Analyze comments
-        analyzer = get_analyzer()
-        result = await analyzer.analyze_async(comments, language=language)
-        count_comments_per_sentiment = analyzer.count_comment_per_sentiment(comments)
-        likes_per_category = analyzer.count_likes_per_category(comments)
-        sentiments_text, likes_text = format_sentiment_and_likes(language, count_comments_per_sentiment, likes_per_category)
         # Format and send result
+        result = data.get("analyze_result", "")
+        count_comments_per_sentiment = data.get("count_comments_per_sentiment")
+        likes_per_category = data.get("likes_per_category")
+        sentiments_text, likes_text = format_sentiment_and_likes(language, count_comments_per_sentiment, likes_per_category)
         response = format_analysis_result(
             result,
-            video_info.title,
+            video_info.get("title", ""),
             language,
             sentiments_text,
             likes_text,
@@ -258,7 +294,7 @@ async def handle_youtube_link(message: Message):
 
         # Fire-and-forget ingest to the protected bot endpoint (non-blocking)
         try:
-            asyncio.create_task(post_ingest({"video_id": video_id, "summary": result}))
+            asyncio.create_task(post_ingest({"video_id": video_info.get("video_id"), "summary": result}))
         except Exception:
             logger.exception("Failed to enqueue ingest task")
 

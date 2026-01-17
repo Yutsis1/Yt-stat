@@ -83,6 +83,8 @@ async def test_get_analyzis_for_comments(monkeypatch):
     assert "analyze_result" in data
     assert "count_comments_per_sentiment" in data
     assert "likes_per_category" in data
+    assert "video_info" in data
+    assert data.get("comments_count") == len(test_comments)
     
     # Verify sentiment distribution
     sentiment_counts = data["count_comments_per_sentiment"]
@@ -95,10 +97,11 @@ async def test_get_analyzis_for_comments(monkeypatch):
     assert likes.get("negative", 0) == 1
     
     # Verify YouTube service was called correctly
-    assert len(youtube_mock.calls) == 2
+    assert len(youtube_mock.calls) == 3
     assert youtube_mock.calls[0].method == "extract_video_id"
     assert test_video_id in youtube_mock.calls[0].args[0]
     assert youtube_mock.calls[1].method == "get_comments"
+    assert youtube_mock.calls[2].method == "get_video_info"
     assert youtube_mock.calls[1].args[0] == test_video_id
 
 
@@ -120,13 +123,14 @@ async def test_invalid_video_id(monkeypatch):
         lambda self, request: mock_auth_dependency()
     )
     
-    # Make request with invalid URL - should raise ValueError
-    with pytest.raises(ValueError, match="Video not found"):
-        response = client.post("/analyze/youtube/comments", json={
-            "video_url": "https://www.youtube.com/watch?v=invalid",
-            "language": "en"
-        })
-    
+    # Make request with invalid URL - should return 400 since id isn't registered
+    response = client.post("/analyze/youtube/comments", json={
+        "video_url": "https://www.youtube.com/watch?v=invalid",
+        "language": "en"
+    })
+    assert response.status_code == 400
+    assert response.json().get("detail") == "Invalid video URL"
+
     # Verify extract_video_id was called
     assert len(youtube_mock.calls) > 0
     assert youtube_mock.calls[0].method == "extract_video_id"
@@ -157,13 +161,14 @@ async def test_comments_disabled(monkeypatch):
         lambda self, request: mock_auth_dependency()
     )
     
-    # Make request - should raise PermissionError
-    with pytest.raises(PermissionError, match="Comments are disabled for this video"):
-        response = client.post("/analyze/youtube/comments", json={
-            "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
-            "language": "en"
-        })
-    
+    # Make request - should return 403
+    response = client.post("/analyze/youtube/comments", json={
+        "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
+        "language": "en"
+    })
+    assert response.status_code == 403
+    assert "Comments are disabled for this video" in response.json().get("detail", "")
+
     # Verify the methods were called
     assert len(youtube_mock.calls) >= 1
     get_comments_calls = [c for c in youtube_mock.calls if c.method == "get_comments"]
@@ -195,13 +200,14 @@ async def test_video_not_found(monkeypatch):
         lambda self, request: mock_auth_dependency()
     )
     
-    # Make request - should raise ValueError
-    with pytest.raises(ValueError, match="Video not found"):
-        response = client.post("/analyze/youtube/comments", json={
-            "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
-            "language": "en"
-        })
-    
+    # Make request - should return 404
+    response = client.post("/analyze/youtube/comments", json={
+        "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
+        "language": "en"
+    })
+    assert response.status_code == 404
+    assert response.json().get("detail") == "Video not found"
+
     # Verify the methods were called
     assert len(youtube_mock.calls) >= 1
     get_comments_calls = [c for c in youtube_mock.calls if c.method == "get_comments"]
@@ -241,13 +247,14 @@ async def test_empty_comments_list(monkeypatch):
         lambda self, request: mock_auth_dependency()
     )
     
-    # Make request - should raise ValueError for empty comments
-    with pytest.raises(ValueError, match="No comments to analyze"):
-        response = client.post("/analyze/youtube/comments", json={
-            "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
-            "language": "en"
-        })
-    
+    # Make request - should return 400 for empty comments
+    response = client.post("/analyze/youtube/comments", json={
+        "video_url": f"https://www.youtube.com/watch?v={test_video_id}",
+        "language": "en"
+    })
+    assert response.status_code == 400
+    assert response.json().get("detail") == "No comments to analyze"
+
     # Verify YouTube service was called correctly
     assert len(youtube_mock.calls) == 2
     assert youtube_mock.calls[0].method == "extract_video_id"
