@@ -2,19 +2,11 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.routers.analyze.youtube_video import app  # Import the specific router app
-from app.routers.auth.auth import require_bot_jwt
 from app.tests.helpers.mock_library import YouTubeMock, OpenAIMock
 from app.modals.video import Comment, VideoInfo, CommentAnalysisResult
 
 
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def override_auth():
-    app.dependency_overrides[require_bot_jwt] = lambda: {"sub": "test", "scopes": ["bot"]}
-    yield
-    app.dependency_overrides.pop(require_bot_jwt, None)
 
 
 @pytest.mark.asyncio

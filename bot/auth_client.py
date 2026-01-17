@@ -8,17 +8,25 @@ from config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# Cached bot JWT and its expiry epoch seconds.
+# The bot uses this token to call protected FastAPI endpoints.
 _token: Optional[str] = None
 _expires_at: int = 0
 
 
 async def get_bot_token() -> str:
-    """Obtain and cache a token from the API. Raises on failure."""
+    """Obtain and cache a token from the API.
+
+    Auth flow (bot → app): POST /auth/token with client credentials to receive
+    a short-lived JWT. Cache it until near expiry to avoid extra requests.
+    Raises on failure.
+    """
     global _token, _expires_at
     now = int(time.time())
     if _token and now < _expires_at - 30:
         return _token
 
+    # Exchange bot client_id/client_secret for a JWT issued by the app.
     async with httpx.AsyncClient() as client:
         r = await client.post(
             f"{settings.api_base_url}/auth/token",
@@ -33,7 +41,7 @@ async def get_bot_token() -> str:
 
 
 async def ensure_authorized() -> bool:
-    """Return True if we have a valid token (or managed to fetch one)."""
+    """Return True if the bot can obtain a valid JWT from the app."""
     try:
         await get_bot_token()
         return True
@@ -43,7 +51,7 @@ async def ensure_authorized() -> bool:
 
 
 async def post_ingest(payload: dict) -> dict:
-    """POST to /bot/ingest using the bot JWT.
+    """POST to /bot/ingest using the bot JWT (protected app endpoint).
 
     Raises exception on failure.
     """

@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 
 from config import get_settings
 from app.routers.analyze.youtube_video import youtube_router
-from app.routers.auth.auth import auth_router, bot_router
 
 # Configure logging
 logging.basicConfig(
@@ -34,8 +33,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.include_router(auth_router)
-app.include_router(bot_router)
 app.include_router(youtube_router)
 
 

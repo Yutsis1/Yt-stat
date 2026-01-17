@@ -11,7 +11,9 @@ from config import get_settings
 
 
 # ===== JWT helpers =====
+# The app issues short-lived JWTs for the bot using client credentials.
 async def create_access_token(subject: str, scopes: Optional[list[str]] = None) -> str:
+    """Create a signed JWT used by the bot to call protected endpoints."""
     settings = get_settings()
     now = int(time.time())
     payload: Dict[str, Any] = {
@@ -25,6 +27,7 @@ async def create_access_token(subject: str, scopes: Optional[list[str]] = None) 
 
 
 async def verify_client_credentials(client_id: str, client_secret: str) -> None:
+    """Validate bot client_id/client_secret using constant-time comparisons."""
     settings = get_settings()
     # constant-time comparisons
     if not secrets.compare_digest(client_id, settings.bot_client_id):
@@ -36,12 +39,14 @@ async def verify_client_credentials(client_id: str, client_secret: str) -> None:
 
 
 # ===== Auth dependency for protected routes =====
+# All routes under /bot require a valid Bearer JWT with the "bot" scope.
 bearer = HTTPBearer(auto_error=False)
 
 
 async def require_bot_jwt(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> Dict[str, Any]:
+    """FastAPI dependency that enforces bot authentication on protected routes."""
     settings = get_settings()
     if not creds or creds.scheme.lower() != "bearer":
         raise HTTPException(
@@ -66,6 +71,7 @@ async def require_bot_jwt(
 
 # ===== Routers =====
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
+# /bot routes are protected by require_bot_jwt so only the bot can call them.
 bot_router = APIRouter(
     prefix="/bot",
     tags=["bot"],
@@ -75,6 +81,7 @@ bot_router = APIRouter(
 
 @auth_router.post("/token", response_model=TokenResponse)
 async def issue_token(req: TokenRequest):
+    """Exchange bot client credentials for a JWT."""
     settings = get_settings()
     await verify_client_credentials(req.client_id, req.client_secret)
     access_token = await create_access_token(subject="telegram-bot", scopes=["bot"])
@@ -83,7 +90,7 @@ async def issue_token(req: TokenRequest):
 
 @bot_router.post("/ingest")
 async def ingest(payload: dict):
-    # Your bot-only endpoint
+    # Example bot-only endpoint (requires valid Bearer JWT).
     return {"ok": True, "received": payload}
 
 
