@@ -1,9 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-
+from fastapi import Depends, FastAPI
 from config import get_settings
 from app.routers.analyze.youtube_video import youtube_router
 
@@ -44,4 +42,4 @@ async def root():
 # For running with: uvicorn app.main:app
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

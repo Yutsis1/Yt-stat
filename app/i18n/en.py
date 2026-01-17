@@ -35,6 +35,10 @@ STRINGS_EN = {
             "<b>Analyzing video comments...</b>\n\n"
             "This may take 10-30 seconds depending on the number of comments."
         ),
+        "request_timeout": (
+            "<b>Request timed out</b>\n\n"
+            "Request to external services timed out. Please try again later."
+        ),
         "video_not_found": (
             "<b>Video not found</b>\n\n"
             "The video might be private, deleted, or the link is incorrect."

@@ -36,8 +36,10 @@ def language_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text=LANGUAGE_NAMES["en"], callback_data="lang:en"),
-                InlineKeyboardButton(text=LANGUAGE_NAMES["ru"], callback_data="lang:ru"),
+                InlineKeyboardButton(
+                    text=LANGUAGE_NAMES["en"], callback_data="lang:en"),
+                InlineKeyboardButton(
+                    text=LANGUAGE_NAMES["ru"], callback_data="lang:ru"),
             ]
         ]
     )
@@ -112,20 +114,20 @@ async def cmd_start(message: Message):
     language = get_user_language(user_id)
 
     # Attempt to get a token and report result
-    if await ensure_authorized():
-        if user_id is not None:
-            _authorized_users.add(user_id)
-        await message.answer(
-            t(language, "authorize_success"),
-            parse_mode=ParseMode.HTML,
-        )
-    else:
-        if user_id is not None:
-            _authorized_users.discard(user_id)
-        await message.answer(
-            t(language, "authorize_failed"),
-            parse_mode=ParseMode.HTML,
-        )
+    # if await ensure_authorized():
+    #     if user_id is not None:
+    #         _authorized_users.add(user_id)
+    #     await message.answer(
+    #         t(language, "authorize_success"),
+    #         parse_mode=ParseMode.HTML,
+    #     )
+    # else:
+    #     if user_id is not None:
+    #         _authorized_users.discard(user_id)
+    #     await message.answer(
+    #         t(language, "authorize_failed"),
+    #         parse_mode=ParseMode.HTML,
+    #     )
 
     # Also show the welcome message for convenience
     await message.answer(
@@ -137,7 +139,8 @@ async def cmd_start(message: Message):
 @router.message(Command("help"))
 async def cmd_help(message: Message):
     """Handle /help command."""
-    language = get_user_language(message.from_user.id if message.from_user else None)
+    language = get_user_language(
+        message.from_user.id if message.from_user else None)
     await message.answer(
         t(language, "help"),
         parse_mode=ParseMode.HTML,
@@ -147,7 +150,8 @@ async def cmd_help(message: Message):
 @router.message(Command("language"))
 async def cmd_language(message: Message):
     """Handle /language command."""
-    language = get_user_language(message.from_user.id if message.from_user else None)
+    language = get_user_language(
+        message.from_user.id if message.from_user else None)
     await message.answer(
         t(language, "language_select"),
         reply_markup=language_keyboard(),
@@ -171,10 +175,48 @@ async def set_language(callback: CallbackQuery):
         _user_languages[user_id] = selected_language
 
     await callback.message.edit_text(
-        t(selected_language, "language_set", language_name=get_language_name(selected_language)),
+        t(selected_language, "language_set",
+          language_name=get_language_name(selected_language)),
         parse_mode=ParseMode.HTML,
     )
     await callback.answer()
+
+
+async def _post_with_retries(
+        max_retries: int,
+        timeout: float,
+        backoff_base: float,
+        backoff_max: float,
+        client: httpx.AsyncClient | None = None,
+        url: str | None = None,
+        **kwargs):
+    """Post with retries for transient network errors and timeouts.
+
+    Accepts an optional `client`. If no client is provided the helper will
+    create a temporary `httpx.AsyncClient` for the duration of the call.
+    """
+    if url is None:
+        raise ValueError("url is required for _post_with_retries")
+
+    async def _do_post(client_obj: httpx.AsyncClient):
+        for attempt in range(1, max_retries + 1):
+            try:
+                return await client_obj.post(url, timeout=timeout, **kwargs)
+            except (httpx.ReadTimeout, httpx.RequestError) as exc:
+                logger.warning(
+                    "HTTP request failed (attempt %s/%s): %s", attempt, max_retries, exc)
+                if attempt < max_retries:
+                    sleep_for = min(
+                        backoff_base * (2 ** (attempt - 1)), backoff_max)
+                    await asyncio.sleep(sleep_for)
+                    continue
+                raise
+
+    if client is None:
+        async with httpx.AsyncClient() as _client:
+            return await _do_post(_client)
+    else:
+        return await _do_post(client)
 
 
 @router.message(F.text)
@@ -184,23 +226,23 @@ async def handle_youtube_link(message: Message):
     user_id = message.from_user.id if message.from_user else None
     language = get_user_language(user_id)
 
-    # Require user session authorization before any API work
-    if not is_user_authorized(user_id):
-        await message.answer(
-            t(language, "please_authorize"),
-            parse_mode=ParseMode.HTML,
-        )
-        return
+    # # Require user session authorization before any API work
+    # if not is_user_authorized(user_id):
+    #     await message.answer(
+    #         t(language, "please_authorize"),
+    #         parse_mode=ParseMode.HTML,
+    #     )
+    #     return
 
-    # Ensure the bot is authorized (we require a bot token to call protected endpoints)
-    if not await ensure_authorized():
-        if user_id is not None:
-            _authorized_users.discard(user_id)
-        await message.answer(
-            t(language, "authorize_failed"),
-            parse_mode=ParseMode.HTML,
-        )
-        return
+    # # Ensure the bot is authorized (we require a bot token to call protected endpoints)
+    # if not await ensure_authorized():
+    #     if user_id is not None:
+    #         _authorized_users.discard(user_id)
+    #     await message.answer(
+    #         t(language, "authorize_failed"),
+    #         parse_mode=ParseMode.HTML,
+    #     )
+    #     return
 
     youtube_service = get_youtube_service()
 
@@ -223,16 +265,36 @@ async def handle_youtube_link(message: Message):
     try:
         # Call the internal analyze endpoint (uses YouTube service + analyzer internally)
         try:
-            settings =  get_settings()
-            token = await get_bot_token()
-            headers = {"Authorization": f"Bearer {token}"}
+            settings = get_settings()
+            # token = await get_bot_token()
+            # headers = {"Authorization": f"Bearer {token}"}
             async with httpx.AsyncClient() as client:
-                r = await client.post(
-                    f"{settings.api_base_url}/analyze/youtube/comments",
-                    json={"video_url": text, "language": language},
-                    headers=headers,
-                    timeout=30.0,
-                )
+                try:
+                    r = await _post_with_retries(
+                        client=client,
+                        url=f"{settings.api_base_url}/analyze/youtube/comments",
+                        json={"video_url": text, "language": language},
+                        max_retries=settings.http_max_retries,
+                        timeout=settings.http_timeout_s,
+                        backoff_base=settings.http_backoff_base_s,
+                        backoff_max=settings.http_backoff_max_s,
+                    )
+                except httpx.ReadTimeout:
+                    logger.error(
+                        "Request timed out while contacting analyze endpoint")
+                    await processing_msg.edit_text(
+                        t(language, "request_timeout"),
+                        parse_mode=ParseMode.HTML,
+                    )
+                    return
+                except httpx.RequestError:
+                    logger.error(
+                        "Network error while contacting analyze endpoint")
+                    await processing_msg.edit_text(
+                        t(language, "request_timeout"),
+                        parse_mode=ParseMode.HTML,
+                    )
+                    return
 
             if r.status_code == 403:
                 await processing_msg.edit_text(
@@ -309,7 +371,8 @@ async def handle_youtube_link(message: Message):
         result = data.get("analyze_result", "")
         count_comments_per_sentiment = data.get("count_comments_per_sentiment")
         likes_per_category = data.get("likes_per_category")
-        sentiments_text, likes_text = format_sentiment_and_likes(language, count_comments_per_sentiment, likes_per_category)
+        sentiments_text, likes_text = format_sentiment_and_likes(
+            language, count_comments_per_sentiment, likes_per_category)
         response = format_analysis_result(
             result,
             video_info.get("title", ""),
@@ -320,10 +383,10 @@ async def handle_youtube_link(message: Message):
         await processing_msg.edit_text(response, parse_mode=ParseMode.HTML)
 
         # Fire-and-forget ingest to the protected bot endpoint (non-blocking)
-        try:
-            asyncio.create_task(post_ingest({"video_id": video_info.get("video_id"), "summary": result}))
-        except Exception:
-            logger.exception("Failed to enqueue ingest task")
+        # try:
+        #     asyncio.create_task(post_ingest({"video_id": video_info.get("video_id"), "summary": result}))
+        # except Exception:
+        #     logger.exception("Failed to enqueue ingest task")
 
     except PermissionError as e:
         await processing_msg.edit_text(

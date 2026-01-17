@@ -70,6 +70,24 @@ class Settings(BaseSettings):
         description="JWT lifetime in seconds (default 15 minutes)",
     )
 
+    # ===================== HTTP / retries =====================
+    http_timeout_s: int = Field(
+        default=60,
+        description="Default timeout for outgoing HTTP requests in seconds",
+    )
+    http_max_retries: int = Field(
+        default=3,
+        description="Maximum number of retries for transient HTTP errors",
+    )
+    http_backoff_base_s: float = Field(
+        default=0.5,
+        description="Base backoff in seconds for retries (exponential)",
+    )
+    http_backoff_max_s: float = Field(
+        default=10.0,
+        description="Maximum backoff in seconds for retries",
+    )
+
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

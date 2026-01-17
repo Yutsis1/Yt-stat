@@ -26,6 +26,7 @@
     "sentiment_negative",
     "sentiment_neutral",
     "sentiment_nonsensical",
-    "sentiment_off_topic"
+    "sentiment_off_topic",
+    "request_timeout"
   ]
 }
