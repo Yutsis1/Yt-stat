@@ -59,5 +59,7 @@ Contribution tips
 - Keep the async + sync boundary in mind. Analyzer provides both async (`analyze_async`) and a sync wrapper (`categorize_comments`) which uses `asyncio.run`.
 - When adding features that change message text, update i18n entries under `app/i18n/` and add tests asserting final message content (see `tests/test_handlers.py`).
 
+- make sure that `.github/copilot-instructions.md` and `.codex/agents.md` has same content inside
+
 
 If anything here is unclear or you want more examples (e.g., a stub for testing another OpenAI pattern or an example of adding a new i18n string), tell me which area you'd like expanded and I will update this file. Thanks! ✅

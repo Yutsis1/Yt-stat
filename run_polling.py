@@ -4,7 +4,9 @@ Use this instead of webhook mode when developing locally.
 """
 import asyncio
 import logging
-from app.main import start_polling
+
+from bot import start_polling
+
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,0 +1,4 @@
+# Telegram bot service dependencies
+-r requirements-common.txt
+
+aiogram>=3.15.0

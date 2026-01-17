@@ -17,12 +17,16 @@
     "error_occurred",
     "language_select",
     "language_set",
+    "authorize_success",
+    "authorize_failed",
+    "please_authorize",
     "comments_by_sentiment_title",
     "likes_by_sentiment_title",
     "sentiment_positive",
     "sentiment_negative",
     "sentiment_neutral",
     "sentiment_nonsensical",
-    "sentiment_off_topic"
+    "sentiment_off_topic",
+    "request_timeout"
   ]
 }

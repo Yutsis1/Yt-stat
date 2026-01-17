@@ -1,0 +1,7 @@
+# Shared dependencies for both app and bot services
+google-api-python-client>=2.150.0
+openai[aiohttp]>=1.55.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+python-dotenv>=1.0.1
+httpx>=0.28.0

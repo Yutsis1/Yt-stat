@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from app.config import get_settings
-from app.modals import Comment, VideoInfo
+from config import get_settings
+from app.modals.video import Comment, VideoInfo
 
 
 

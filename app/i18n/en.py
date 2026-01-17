@@ -35,6 +35,10 @@ STRINGS_EN = {
             "<b>Analyzing video comments...</b>\n\n"
             "This may take 10-30 seconds depending on the number of comments."
         ),
+        "request_timeout": (
+            "<b>Request timed out</b>\n\n"
+            "Request to external services timed out. Please try again later."
+        ),
         "video_not_found": (
             "<b>Video not found</b>\n\n"
             "The video might be private, deleted, or the link is incorrect."
@@ -64,6 +68,9 @@ STRINGS_EN = {
         ),
         "language_select": "<b>Select language:</b>",
         "language_set": "Language set to <b>{language_name}</b>.",
+        "authorize_success": "App authorized — ready to go!",
+        "authorize_failed": "Authorization failed. Please try /start again or contact the administrator.",
+        "please_authorize": "Please send /start to authorize the bot before using this command.",
         "comments_by_sentiment_title": "Comments by sentiment:",
         "likes_by_sentiment_title": "Likes by sentiment (total likes):",
         "sentiment_positive": "Positive",

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections import Counter
 import random
 from typing import List, Optional
@@ -6,8 +7,8 @@ from openai import DefaultAioHttpClient, RateLimitError, AsyncOpenAI
 import json
 import re
 
-from app.config import get_settings
-from app.modals import  Comment, CommentAnalysisResult
+from config import get_settings
+from app.modals.video import  Comment, CommentAnalysisResult
 
 
 class CommentAnalyzer:
@@ -80,6 +81,30 @@ class CommentAnalyzer:
             prompt["variables"] = {"language": language}
         return prompt
 
+    def _parse_comment_analysis(self, output_text: str) -> Optional[CommentAnalysisResult]:
+        try:
+            data = json.loads(output_text)
+        except json.JSONDecodeError:
+            logger = logging.getLogger(__name__)
+            logger.warning("Failed to decode analysis JSON")
+            return None
+
+        if not isinstance(data, dict):
+            return None
+
+        sentiment = data.get("sentiment")
+        allowed_sentiments = {"positive", "negative", "neutral", "nonsensical", "off-topic"}
+        if sentiment not in allowed_sentiments:
+            sentiment = "neutral"
+
+        main_theme = data.get("main_theme")
+        if main_theme is None:
+            main_theme = ""
+        elif not isinstance(main_theme, str):
+            main_theme = str(main_theme)
+
+        return CommentAnalysisResult(sentiment=sentiment, main_theme=main_theme)
+
     async def analyze_single_comment_async(
         self,
         comment: Comment,
@@ -97,7 +122,7 @@ class CommentAnalyzer:
                 input=comment.text,
                 prompt=prompt or self._build_prompt(self.comment_prompt_id, language),
             )
-            return CommentAnalysisResult(**json.loads(resp.output_text))
+            return self._parse_comment_analysis(resp.output_text)
 
     async def categorize_comments_async(
         self,
@@ -131,15 +156,15 @@ class CommentAnalyzer:
         Async version of analyze() that assumes comments already have analysis_result,
         or calls categorize first if you prefer.
         """
-        await self.categorize_comments_async(comments, language=language)
+        categorized_comments = await self.categorize_comments_async(comments, language=language)
         comments_theme_list = [
             {
                 "main_theme": c.analysis_result.main_theme,
                 "like_count": c.like_count,
                 "sentiment": c.analysis_result.sentiment,
             }
-            for c in comments
-            if c.analysis_result and c.analysis_result.main_theme
+            for c in categorized_comments
+            if c and c.analysis_result and c.analysis_result.main_theme
         ]
 
         resp = await self._call_with_retries(
