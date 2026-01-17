@@ -3,8 +3,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
-from aiogram import Bot, Dispatcher
-from aiogram.types import Update
 
 from config import get_settings
 
