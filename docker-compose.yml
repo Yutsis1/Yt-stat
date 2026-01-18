@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: app/Dockerfile.app
+      dockerfile: Dockerfile.app
     container_name: yt-stat-app
     ports:
       - "8000:8000"
@@ -23,7 +23,7 @@ services:
   bot:
     build:
       context: .
-      dockerfile: bot/Dockerfile.bot
+      dockerfile: Dockerfile.bot
     container_name: yt-stat-bot
     env_file:
       - .env

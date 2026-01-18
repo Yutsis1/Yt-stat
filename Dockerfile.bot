@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /bot
 
 # Install dependencies (avoid BuildKit mounts so builds work on Railway)
-COPY bot/requirements-bot.txt requirements-bot.txt
+COPY requirements-bot.txt requirements-bot.txt
 COPY requirements-common.txt requirements-common.txt
 RUN pip install --no-cache-dir -r requirements-common.txt -r requirements-bot.txt
 
