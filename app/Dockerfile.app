@@ -6,8 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY app/requirements-app.txt requirements-app.txt
-COPY requirements-common.txt /requirements-common.txt
+COPY requirements-app.txt requirements-app.txt
+COPY ../requirements-common.txt /requirements-common.txt
 
 # mount pip cache commented due to railway issue 
 #RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \ 
