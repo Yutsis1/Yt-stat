@@ -11,7 +11,9 @@ WORKDIR /app
 COPY app/requirements-app.txt requirements-app.txt
 COPY requirements-common.txt /requirements-common.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements-app.txt
+    pip install --no-cache-dir \
+        -r /requirements-common.txt \
+        -r requirements-app.txt
 
 # Copy application code
 COPY . .
