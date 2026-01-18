@@ -9,7 +9,9 @@ WORKDIR /app
 COPY app/requirements-app.txt requirements-app.txt
 COPY requirements-common.txt /requirements-common.txt
 
-RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \
+# mount pip cache commented due to railway issue 
+#RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \ 
+RUN \ 
     pip install --no-cache-dir \
         -r /requirements-common.txt \
         -r requirements-app.txt
