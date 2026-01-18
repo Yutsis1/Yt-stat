@@ -23,12 +23,25 @@ async def lifespan(app: FastAPI):
     logger.info("Bot shutdown complete")
 
 
+# OpenAPI tags metadata
+openapi_tags = [
+    {
+        "name": "YouTube Analysis",
+        "description": "Endpoints to analyze YouTube videos and comments",
+    }
+]
+
 # Create FastAPI app
 app = FastAPI(
     title="YouTube Comment Analyzer Bot",
     description="Telegram bot for analyzing YouTube video comments",
     version="1.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    openapi_tags=openapi_tags,
+    docs_url="/swagger",
+    openapi_url="/swagger.json",
+    contact={"name": "Roman Iutsis"},
+    license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"}
 )
 
 app.include_router(youtube_router)
