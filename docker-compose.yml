@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.app
+      dockerfile: app/Dockerfile.app
     container_name: yt-stat-app
     ports:
       - "8000:8000"
@@ -14,7 +14,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
       interval: 30s
-      timeout: 10s
+      timeout: 60s
       retries: 3
       start_period: 10s
     networks:
@@ -23,7 +23,7 @@ services:
   bot:
     build:
       context: .
-      dockerfile: Dockerfile.bot
+      dockerfile: bot/Dockerfile.bot
     container_name: yt-stat-bot
     env_file:
       - .env

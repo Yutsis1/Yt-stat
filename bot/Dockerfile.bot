@@ -5,11 +5,11 @@ FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /bot
 
 # Install dependencies with cache mount for faster rebuilds
-COPY requirements-bot.txt requirements-bot.txt
-COPY requirements-common.txt requirements-common.txt
+COPY bot/requirements-bot.txt requirements-bot.txt
+COPY requirements-common.txt /requirements-common.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-cache-dir -r requirements-bot.txt
 

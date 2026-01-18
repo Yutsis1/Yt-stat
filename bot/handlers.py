@@ -7,8 +7,6 @@ import httpx
 
 from app.i18n import DEFAULT_LANGUAGE, LANGUAGE_NAMES, get_language_name, t
 from app.services.youtube import get_youtube_service
-from app.services.analyzer import get_analyzer
-from bot.auth_client import ensure_authorized, get_bot_token, post_ingest
 import asyncio
 
 from config import get_settings
@@ -105,6 +103,19 @@ def format_sentiment_and_likes(language: str, sentiment_counts, likes_by_sentime
         lines2.append(f"{label}: {c}")
 
     return ("\n".join(lines1), "\n".join(lines2))
+
+
+def feedback_keyboard(language: str, url: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t(language, "feedback_button"),
+                    url=url,
+                )
+            ]
+        ]
+    )
 
 
 @router.message(Command("start"))
@@ -204,7 +215,7 @@ async def _post_with_retries(
                 return await client_obj.post(url, timeout=timeout, **kwargs)
             except (httpx.ReadTimeout, httpx.RequestError) as exc:
                 logger.warning(
-                    "HTTP request failed (attempt %s/%s): %s", attempt, max_retries, exc)
+                    "HTTP request failed (attempt %s/%s) for %s: %s", attempt, max_retries, url, exc)
                 if attempt < max_retries:
                     sleep_for = min(
                         backoff_base * (2 ** (attempt - 1)), backoff_max)
@@ -269,27 +280,28 @@ async def handle_youtube_link(message: Message):
             # token = await get_bot_token()
             # headers = {"Authorization": f"Bearer {token}"}
             async with httpx.AsyncClient() as client:
+                analyze_url = f"{settings.api_base_url}/analyze/youtube/comments"
                 try:
                     r = await _post_with_retries(
                         client=client,
-                        url=f"{settings.api_base_url}/analyze/youtube/comments",
+                        url=analyze_url,
                         json={"video_url": text, "language": language},
                         max_retries=settings.http_max_retries,
                         timeout=settings.http_timeout_s,
                         backoff_base=settings.http_backoff_base_s,
                         backoff_max=settings.http_backoff_max_s,
                     )
-                except httpx.ReadTimeout:
+                except httpx.ReadTimeout as exc:
                     logger.error(
-                        "Request timed out while contacting analyze endpoint")
+                        "Request timed out while contacting analyze endpoint %s: %s", analyze_url, exc)
                     await processing_msg.edit_text(
                         t(language, "request_timeout"),
                         parse_mode=ParseMode.HTML,
                     )
                     return
-                except httpx.RequestError:
+                except httpx.RequestError as exc:
                     logger.error(
-                        "Network error while contacting analyze endpoint")
+                        "Network error while contacting analyze endpoint %s: %s", analyze_url, exc)
                     await processing_msg.edit_text(
                         t(language, "request_timeout"),
                         parse_mode=ParseMode.HTML,
@@ -373,14 +385,24 @@ async def handle_youtube_link(message: Message):
         likes_per_category = data.get("likes_per_category")
         sentiments_text, likes_text = format_sentiment_and_likes(
             language, count_comments_per_sentiment, likes_per_category)
+        feedback_url = (settings.feedback_form_url or "").strip()
+        extra_lines: list[str] = [sentiments_text, likes_text]
+        reply_markup = None
+        if feedback_url:
+            extra_lines.append(t(language, "feedback_cta"))
+            reply_markup = feedback_keyboard(language, feedback_url)
+
         response = format_analysis_result(
             result,
             video_info.get("title", ""),
             language,
-            sentiments_text,
-            likes_text,
+            *extra_lines,
         )
-        await processing_msg.edit_text(response, parse_mode=ParseMode.HTML)
+        await processing_msg.edit_text(
+            response,
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup,
+        )
 
         # Fire-and-forget ingest to the protected bot endpoint (non-blocking)
         # try:

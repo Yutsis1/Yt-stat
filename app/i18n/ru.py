@@ -77,5 +77,7 @@ STRINGS_RU = {"ru": {
     "sentiment_neutral": "Нейтральные",
     "sentiment_nonsensical": "Бессмысленные",
     "sentiment_off_topic": "Не по теме",
+    "feedback_cta": "Помогите нам стать лучше: заполните короткую форму.",
+    "feedback_button": "Оставить отзыв",
 },
 } 

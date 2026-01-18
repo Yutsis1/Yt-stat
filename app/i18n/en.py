@@ -78,5 +78,7 @@ STRINGS_EN = {
         "sentiment_neutral": "Neutral",
         "sentiment_nonsensical": "Nonsensical",
         "sentiment_off_topic": "Off-topic",
+        "feedback_cta": "Help us improve: please fill out this short form.",
+        "feedback_button": "Share feedback",
     },
 } 

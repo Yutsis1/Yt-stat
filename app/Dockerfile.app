@@ -8,8 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install dependencies with cache mount for faster rebuilds
-COPY requirements-app.txt requirements-app.txt
-COPY requirements-common.txt requirements-common.txt
+COPY app/requirements-app.txt requirements-app.txt
+COPY requirements-common.txt /requirements-common.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-cache-dir -r requirements-app.txt
 

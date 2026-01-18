@@ -27,6 +27,8 @@
     "sentiment_neutral",
     "sentiment_nonsensical",
     "sentiment_off_topic",
-    "request_timeout"
+    "request_timeout",
+    "feedback_cta",
+    "feedback_button"
   ]
 }
