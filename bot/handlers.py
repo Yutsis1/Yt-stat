@@ -1,11 +1,10 @@
 import logging
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
 import httpx
-from bot.helpers.key_button import feedback_keyboard, main_menu_keyboard
-from helpers.callbacks import *
+from bot.helpers.key_button import feedback_keyboard, language_keyboard, main_menu_keyboard
 
 from app.i18n import DEFAULT_LANGUAGE, LANGUAGE_NAMES, get_language_name, t
 from app.services.youtube import get_youtube_service
@@ -17,28 +16,12 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 _user_languages: dict[int, str] = {}
-_authorized_users: set[int] = set()
 
 
 def get_user_language(user_id: int | None) -> str:
     if user_id is None:
         return DEFAULT_LANGUAGE
     return _user_languages.get(user_id, DEFAULT_LANGUAGE)
-
-
-
-
-def language_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=LANGUAGE_NAMES["en"], callback_data=CB_LANGUAGE_EN),
-                InlineKeyboardButton(
-                    text=LANGUAGE_NAMES["ru"], callback_data=CB_LANGUAGE_RU),
-            ]
-        ]
-    )
 
 
 def format_analysis_result(
