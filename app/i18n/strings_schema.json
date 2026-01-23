@@ -16,6 +16,8 @@
     "error",
     "error_occurred",
     "language_select",
+    "menu_change_language",
+    "menu_help",
     "language_set",
     "authorize_success",
     "authorize_failed",

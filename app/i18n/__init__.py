@@ -1,7 +1,7 @@
 import app.i18n.en as en
 import app.i18n.ru as ru
 
-DEFAULT_LANGUAGE = "en"
+DEFAULT_LANGUAGE = "ru"
 
 LANGUAGE_NAMES = {
     "en": "English",

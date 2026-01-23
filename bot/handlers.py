@@ -4,6 +4,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
 import httpx
+from bot.helpers.key_button import feedback_keyboard, main_menu_keyboard
+from helpers.callbacks import *
 
 from app.i18n import DEFAULT_LANGUAGE, LANGUAGE_NAMES, get_language_name, t
 from app.services.youtube import get_youtube_service
@@ -24,10 +26,6 @@ def get_user_language(user_id: int | None) -> str:
     return _user_languages.get(user_id, DEFAULT_LANGUAGE)
 
 
-def is_user_authorized(user_id: int | None) -> bool:
-    if user_id is None:
-        return False
-    return user_id in _authorized_users
 
 
 def language_keyboard() -> InlineKeyboardMarkup:
@@ -35,9 +33,9 @@ def language_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=LANGUAGE_NAMES["en"], callback_data="lang:en"),
+                    text=LANGUAGE_NAMES["en"], callback_data=CB_LANGUAGE_EN),
                 InlineKeyboardButton(
-                    text=LANGUAGE_NAMES["ru"], callback_data="lang:ru"),
+                    text=LANGUAGE_NAMES["ru"], callback_data=CB_LANGUAGE_RU),
             ]
         ]
     )
@@ -105,57 +103,31 @@ def format_sentiment_and_likes(language: str, sentiment_counts, likes_by_sentime
     return ("\n".join(lines1), "\n".join(lines2))
 
 
-def feedback_keyboard(language: str, url: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=t(language, "feedback_button"),
-                    url=url,
-                )
-            ]
-        ]
-    )
-
-
 @router.message(Command("start"))
 async def cmd_start(message: Message):
-    """Handle /start command: attempt to obtain an API token to authorize the bot."""
+    """Handle /start command."""
     user_id = message.from_user.id if message.from_user else None
     language = get_user_language(user_id)
 
-    # Attempt to get a token and report result
-    # if await ensure_authorized():
-    #     if user_id is not None:
-    #         _authorized_users.add(user_id)
-    #     await message.answer(
-    #         t(language, "authorize_success"),
-    #         parse_mode=ParseMode.HTML,
-    #     )
-    # else:
-    #     if user_id is not None:
-    #         _authorized_users.discard(user_id)
-    #     await message.answer(
-    #         t(language, "authorize_failed"),
-    #         parse_mode=ParseMode.HTML,
-    #     )
-
-    # Also show the welcome message for convenience
     await message.answer(
         t(language, "welcome"),
         parse_mode=ParseMode.HTML,
+        reply_markup=main_menu_keyboard(language),
     )
 
 
 @router.message(Command("help"))
 async def cmd_help(message: Message):
     """Handle /help command."""
-    language = get_user_language(
-        message.from_user.id if message.from_user else None)
+    user_id = message.from_user.id if message.from_user else None
+    language = get_user_language(user_id)
+
     await message.answer(
         t(language, "help"),
         parse_mode=ParseMode.HTML,
+        reply_markup=main_menu_keyboard(language),
     )
+
 
 
 @router.message(Command("language"))
@@ -237,23 +209,6 @@ async def handle_youtube_link(message: Message):
     user_id = message.from_user.id if message.from_user else None
     language = get_user_language(user_id)
 
-    # # Require user session authorization before any API work
-    # if not is_user_authorized(user_id):
-    #     await message.answer(
-    #         t(language, "please_authorize"),
-    #         parse_mode=ParseMode.HTML,
-    #     )
-    #     return
-
-    # # Ensure the bot is authorized (we require a bot token to call protected endpoints)
-    # if not await ensure_authorized():
-    #     if user_id is not None:
-    #         _authorized_users.discard(user_id)
-    #     await message.answer(
-    #         t(language, "authorize_failed"),
-    #         parse_mode=ParseMode.HTML,
-    #     )
-    #     return
 
     youtube_service = get_youtube_service()
 
@@ -403,12 +358,6 @@ async def handle_youtube_link(message: Message):
             parse_mode=ParseMode.HTML,
             reply_markup=reply_markup,
         )
-
-        # Fire-and-forget ingest to the protected bot endpoint (non-blocking)
-        # try:
-        #     asyncio.create_task(post_ingest({"video_id": video_info.get("video_id"), "summary": result}))
-        # except Exception:
-        #     logger.exception("Failed to enqueue ingest task")
 
     except PermissionError as e:
         await processing_msg.edit_text(
