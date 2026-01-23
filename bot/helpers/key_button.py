@@ -1,6 +1,7 @@
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from app.i18n import t
-from callbacks import CB_MENU_HELP, CB_MENU_LANGUAGE
+from bot.helpers.callbacks import CB_MENU_HELP, CB_MENU_LANGUAGE
+
 
 def main_menu_keyboard(language: str) -> InlineKeyboardMarkup:
     """
