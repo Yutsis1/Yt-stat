@@ -14,6 +14,7 @@ Quick start (developer)
 - Run (production-like): `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 - Tests: `pytest` (project includes pytest and pytest-asyncio)
 - Debugging: When running or debugging from your editor/IDE, make sure to use the project's .venv Python interpreter for execution (activate the virtualenv with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\activate` on Windows), or configure your debugger to use the `.venv` python executable.
+- When you execute scripts or commands from the terminal use `.venv/bin/python` (macOS/Linux) or `.venv\Scripts\python.exe` (Windows) to ensure the virtual environment is used.
 
 Architecture & important files
 - `app/main.py` — FastAPI app and lifecycle; will run bot as either polling (dev) or (production). Use `run_polling.py` for local testing.
