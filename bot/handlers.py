@@ -5,8 +5,9 @@ from aiogram.filters import Command
 from aiogram.enums import ParseMode
 import httpx
 from bot.helpers.key_button import feedback_keyboard, language_keyboard, main_menu_keyboard
+from bot.helpers.user_settings import get_user_language, set_user_language
 
-from app.i18n import DEFAULT_LANGUAGE, LANGUAGE_NAMES, get_language_name, t
+from app.i18n import LANGUAGE_NAMES, get_language_name, t
 from app.services.youtube import get_youtube_service
 import asyncio
 
@@ -15,13 +16,6 @@ from config import get_settings
 logger = logging.getLogger(__name__)
 
 router = Router()
-_user_languages: dict[int, str] = {}
-
-
-def get_user_language(user_id: int | None) -> str:
-    if user_id is None:
-        return DEFAULT_LANGUAGE
-    return _user_languages.get(user_id, DEFAULT_LANGUAGE)
 
 
 def format_analysis_result(
@@ -46,6 +40,36 @@ def format_analysis_result(
 
     return "\n".join(lines)
 
+@router.callback_query(F.data.startswith("menu:"))
+async def on_main_menu_action(callback: CallbackQuery):
+    user_id = callback.from_user.id if callback.from_user else None
+    language = get_user_language(user_id)
+
+    if callback.message is None:
+        await callback.answer()
+        return
+
+    action = callback.data.split(":", 1)[1]
+
+    if action == "language":
+        await callback.message.edit_text(
+            t(language, "language_select"),
+            reply_markup=language_keyboard(),
+            parse_mode=ParseMode.HTML,
+        )
+        await callback.answer()
+        return
+
+    if action == "help":
+        await callback.message.edit_text(
+            t(language, "help"),
+            reply_markup=main_menu_keyboard(language),
+            parse_mode=ParseMode.HTML,
+        )
+        await callback.answer()
+        return
+
+    await callback.answer()
 
 def format_sentiment_and_likes(language: str, sentiment_counts, likes_by_sentiment) -> tuple[str, str]:
     """Format sentiment counts and likes per sentiment into localized strings."""
@@ -116,6 +140,7 @@ async def cmd_help(message: Message):
 @router.message(Command("language"))
 async def cmd_language(message: Message):
     """Handle /language command."""
+    from bot.helpers.user_settings import get_user_language
     language = get_user_language(
         message.from_user.id if message.from_user else None)
     await message.answer(
@@ -138,7 +163,7 @@ async def set_language(callback: CallbackQuery):
         return
 
     if user_id is not None:
-        _user_languages[user_id] = selected_language
+        set_user_language(user_id, selected_language)
 
     await callback.message.edit_text(
         t(selected_language, "language_set",
