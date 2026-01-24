@@ -39,7 +39,7 @@ app = FastAPI(
     lifespan=lifespan,
     openapi_tags=openapi_tags,
     docs_url="/swagger",
-    openapi_url="/swagger.json",
+    openapi_url="/openapi.json",
     contact={"name": "Roman Iutsis"},
     license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"}
 )
