@@ -10,6 +10,9 @@ def settings_env(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai")
     monkeypatch.setenv("COMMENT_PROMPT_ID", "comment-prompt")
     monkeypatch.setenv("TOPIC_ANALYSIS_PROMPT_ID", "topic-prompt")
+    monkeypatch.setenv("BOT_CLIENT_ID", "test-bot-client-id")
+    monkeypatch.setenv("BOT_CLIENT_SECRET", "test-bot-client-secret")
+    monkeypatch.setenv("JWT_SECRET", "test-jwt-secret")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
