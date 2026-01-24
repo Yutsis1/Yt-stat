@@ -80,14 +80,6 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 5. Receive a detailed breakdown of comment types!
 
 
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check |
-| `/health` | GET | Detailed health status |
-| `/webhook` | POST | Telegram webhook receiver |
-
 ## License
 
 MIT

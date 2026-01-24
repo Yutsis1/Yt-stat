@@ -16,6 +16,8 @@
     "error",
     "error_occurred",
     "language_select",
+    "menu_change_language",
+    "menu_help",
     "language_set",
     "authorize_success",
     "authorize_failed",
@@ -27,6 +29,8 @@
     "sentiment_neutral",
     "sentiment_nonsensical",
     "sentiment_off_topic",
-    "request_timeout"
+    "request_timeout",
+    "feedback_cta",
+    "feedback_button"
   ]
 }

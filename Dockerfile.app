@@ -1,23 +1,23 @@
 # syntax=docker/dockerfile:1.4
 FROM python:3.14-slim
 
-# Prevent Python from writing pyc files and buffer stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install dependencies with cache mount for faster rebuilds
 COPY requirements-app.txt requirements-app.txt
 COPY requirements-common.txt requirements-common.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements-app.txt
 
-# Copy application code
+# mount pip cache commented due to railway issue 
+#RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \ 
+RUN \ 
+    pip install --no-cache-dir \
+        -r requirements-common.txt \
+        -r requirements-app.txt
+
 COPY . .
 
-# Expose FastAPI port
 EXPOSE 8000
-
-# Run uvicorn server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use dynamic PORT environment variable on platforms like Railway (fallback to 8000)
+CMD ["sh", "-lc", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -2,3 +2,6 @@
 -r requirements-common.txt
 -r requirements-bot.txt
 -r requirements-app.txt
+
+pytest
+pytest-asyncio

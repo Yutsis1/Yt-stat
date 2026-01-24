@@ -1,4 +1,4 @@
-from app.tests.scripts import validate_translations
+from app.tests.helpers.scripts import validate_translations
 
 """
 Tests for i18n schema validation.

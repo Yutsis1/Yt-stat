@@ -37,6 +37,12 @@ class Settings(BaseSettings):
         description="Maximum comments to fetch",
     )
 
+    # ===================== Feedback =====================
+    feedback_form_url: str | None = Field(
+        default=None,
+        description="Prefilled Google Form URL for user feedback",
+    )
+
     # ===================== Prompts =====================
     comment_prompt_id: str = Field(
         ...,

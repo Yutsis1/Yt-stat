@@ -5,13 +5,12 @@ FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /bot
 
-# Install dependencies with cache mount for faster rebuilds
+# Install dependencies (avoid BuildKit mounts so builds work on Railway)
 COPY requirements-bot.txt requirements-bot.txt
 COPY requirements-common.txt requirements-common.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements-bot.txt
+RUN pip install --no-cache-dir -r requirements-common.txt -r requirements-bot.txt
 
 # Copy application code
 COPY . .

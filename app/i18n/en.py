@@ -67,6 +67,8 @@ STRINGS_EN = {
             "too many comments or there might be an API issue."
         ),
         "language_select": "<b>Select language:</b>",
+        "menu_change_language": "🌍 Change language",
+        "menu_help": "ℹ️ Help",
         "language_set": "Language set to <b>{language_name}</b>.",
         "authorize_success": "App authorized — ready to go!",
         "authorize_failed": "Authorization failed. Please try /start again or contact the administrator.",
@@ -78,5 +80,7 @@ STRINGS_EN = {
         "sentiment_neutral": "Neutral",
         "sentiment_nonsensical": "Nonsensical",
         "sentiment_off_topic": "Off-topic",
+        "feedback_cta": "Help us improve: please fill out this short form.",
+        "feedback_button": "Share feedback",
     },
 } 

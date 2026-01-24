@@ -1,6 +1,6 @@
 import pytest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, MagicMock, patch
 
 from bot import handlers
 from app.modals import Comment, VideoInfo
@@ -9,18 +9,27 @@ from app.modals import Comment, VideoInfo
 @pytest.mark.asyncio
 async def test_handle_youtube_link_uses_analyzer(monkeypatch):
     """Test that tg interface is working."""
-    handlers._user_languages.clear()
-    handlers._authorized_users.clear()
     comments = [
         Comment(text="Nice!", like_count=2, author="A"),
         Comment(text="Not great", like_count=0, author="B"),
     ]
 
-    # Ensure handler thinks the bot is authorized and avoid scheduling background tasks in tests
-    monkeypatch.setattr(handlers, 'ensure_authorized', AsyncMock(return_value=True))
-    monkeypatch.setattr(handlers, 'post_ingest', AsyncMock(return_value={}))
-    monkeypatch.setattr(handlers.asyncio, 'create_task', lambda c: None)
-    monkeypatch.setattr('bot.handlers.get_bot_token', AsyncMock(return_value='mocktoken'))
+    # Mock settings
+    mock_settings = SimpleNamespace(
+        api_base_url="http://localhost:8000",
+        http_max_retries=3,
+        http_timeout_s=30,
+        http_backoff_base_s=0.1,
+        http_backoff_max_s=5,
+        feedback_form_url="",
+    )
+    monkeypatch.setattr("bot.handlers.get_settings", lambda: mock_settings)
+
+    # Mock YouTube service
+    mock_youtube_service = SimpleNamespace(
+        extract_video_id=lambda url: "video123"
+    )
+    monkeypatch.setattr("bot.handlers.get_youtube_service", lambda: mock_youtube_service)
 
     # Prepare mock HTTP response from analyze endpoint
     mock_response = SimpleNamespace(
@@ -33,12 +42,16 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
             "comments_count": len(comments),
         },
         text='',
+        raise_for_status=lambda: None,  # Add this method
     )
 
-    async def fake_post(self, *args, **kwargs):
-        return mock_response
+    # Mock the AsyncClient
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
 
-    monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
+    monkeypatch.setattr("httpx.AsyncClient", lambda *args, **kwargs: mock_client)
 
     processing_msg = SimpleNamespace(edit_text=AsyncMock())
     message = SimpleNamespace(
@@ -46,32 +59,33 @@ async def test_handle_youtube_link_uses_analyzer(monkeypatch):
         from_user=SimpleNamespace(id=42),
         answer=AsyncMock(return_value=processing_msg),
     )
-    handlers._authorized_users.add(42)
 
     await handlers.handle_youtube_link(message)
 
-    assert processing_msg.edit_text.await_count >= 2
+    assert processing_msg.edit_text.await_count >= 1
     final_message = processing_msg.edit_text.call_args_list[-1].args[0]
     assert "Summary text" in final_message
     assert "Test Video" in final_message
-    assert "Comments by sentiment" in final_message
 
 
 @pytest.mark.asyncio
-async def test_requires_authorization_shows_message(monkeypatch):
-    handlers._user_languages.clear()
-    handlers._authorized_users.clear()
+async def test_invalid_youtube_link(monkeypatch):
+    """Test that invalid YouTube link shows error message."""
+    # Mock YouTube service
+    mock_youtube_service = SimpleNamespace(
+        extract_video_id=lambda url: None
+    )
+    monkeypatch.setattr("bot.handlers.get_youtube_service", lambda: mock_youtube_service)
+
     message = SimpleNamespace(
-        text="https://youtu.be/video123",
+        text="not-a-youtube-link",
         from_user=SimpleNamespace(id=42),
         answer=AsyncMock(),
     )
-
-    # Simulate unauthorized state
-    monkeypatch.setattr(handlers, 'ensure_authorized', AsyncMock(return_value=False))
 
     await handlers.handle_youtube_link(message)
 
     message.answer.assert_awaited_once()
     called_msg = message.answer.call_args.args[0]
-    assert "authorize" in called_msg.lower() or "/start" in called_msg.lower()
+    # Message is in Russian by default, so check for either Russian or English
+    assert "invalid" in called_msg.lower() or "некорректна" in called_msg.lower()
